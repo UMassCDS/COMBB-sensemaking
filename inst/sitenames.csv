@@ -1,0 +1,11 @@
+site,latitude,longitude,description,include,years
+E33,41.54363,-71.05974,Westport River East Branch Buoy,FALSE,
+SR4,41.538091,-70.977211,Slocums River Outer,TRUE,"2021, 2022"
+OB1,41.740892,-70.659368,Onset Bay Inner,FALSE,
+OB2,41.738223,-70.64778,Onset Bay Outer,FALSE,
+OB3A,41.734777,-70.665905,Onset Bay Inner,FALSE,
+BD1,41.747914,-70.65591,Broad Muddy Cove,FALSE,
+SB2X,41.74212,-70.672458,Shell Point Bay,FALSE,
+OB9,41.734026,-70.645207,Onset Bay Outer,FALSE,
+RB1,41.674561,-70.615062,Red Brook Harbor Inner,TRUE,2023
+WH1X,41.640969,-70.643634,Wild Harbor Inner,TRUE,2023
