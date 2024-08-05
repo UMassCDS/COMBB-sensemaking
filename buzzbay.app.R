@@ -6,13 +6,17 @@ library(shiny)
 library(bslib)
 library(shinybusy)
 library(shinyWidgets)
+library(ggvis)
 
 
 sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
-print(sites)
+siteYear <- readRDS('inst/siteYear.RDS')
+sensors <- readRDS('inst/sensors.RDS')
 
+print(sites)
+siteYear <<- siteYear
 
 
 # User interface ---------------------
@@ -26,10 +30,9 @@ ui <- page_sidebar(
          add_busy_spinner(spin = 'fading-circle', position = 'top-left', onstart = FALSE, timeout = 500),
          
          card(
-            selectInput('site', label = 'Site', choices = split(sites$site, sites$description)),
-            radioButtons('units', label = 'Units', choices = list('mg/l', '% saturation')),
-            sliderInput('period', label = 'Time period', min = 6, max = 9, value = c(6, 9)),  ######### need to read
-            # dates from file and set these accordingly
+            selectInput('siteYear', label = 'Site', choices = siteYear$siteYear),
+            sliderInput('period', label = 'Time period', min = 6, max = 9, value = c(6, 9)), 
+            radioButtons('units', label = 'Units', choiceNames = list('mg/L', '% saturation'), choiceValues = 1:2),
             
             textInput('threshold', label = 'Comparison threshold', value = '', placeholder = 'n.nn',
                       width = '40%'),   
@@ -38,9 +41,9 @@ ui <- page_sidebar(
             textInput('exceedance', label = 'Exceedance threshold', value = '', placeholder = 'nn',
                       width = '40%'),
             materialSwitch(inputId = 'grab.bag', label = 'Display grab-bag samples', 
-                          value = FALSE)
+                           value = FALSE)
          ),
-         width = 290
+         width = 340
       ),
    mainPanel(
       ggvisOutput(plot_id = 'dissolved_oxygen')
@@ -58,12 +61,39 @@ server <- function(input, output, session) {
    #bs_themer()                                 # uncomment to select a new theme
    #  print(getDefaultReactiveDomain())
    
-   data |>
-      ggvis(x = ~rows, y = ~random) |>
-      bind_shiny('dissolved_oxygen')
+   # data |>
+   #    ggvis(x = ~rows, y = ~random) |>
+   #    bind_shiny('dissolved_oxygen')
    
-}
+   
+   
+   
+   observeEvent(input$siteYear, {
+      session$userData$sensor <- sensors[sensors$siteYear == input$siteYear, ]
+      zzz <<- session$userData$sensor
+      minmax <- c(min(session$userData$sensor$Date_Time), max(session$userData$sensor$Date_Time))
+      updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
+                        timeFormat = '%m-%d',
+                        session = getDefaultReactiveDomain())
+      
+   })
+   
+   observeEvent(list(input$siteYear, input$period), {
+      session$userData$window <- session$userData$sensor[session$userData$sensor$Date_Time >= input$period[1] & 
+                                                            session$userData$sensor$Date_Time <= input$period[2], ]      
+   })
+   
+   observeEvent(list(input$siteYear, input$period, input$units), {
+      cat('input$units = ', input$units, '\n', sep = '')
+      print(is.numeric(input$units))
+      cat("c('DO', 'DO_Pct_Sat')[input$units] = ", c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))], '\n', sep = '')
+      print(names(session$userData$window))
+      session$userData$window$units <- session$userData$window$DO  # [, 'DO']    #[, c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))]]
+      session$userData$window |>
+         ggvis(x = ~Date_Time, y = ~units) |>
+         bind_shiny('dissolved_oxygen')
+   })
+}   
+
 
 shinyApp(ui, server)
-
-

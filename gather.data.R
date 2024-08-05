@@ -13,7 +13,7 @@
    # Result:
    #     'inst/sensors.RDS'   file containing a data frame with target variables for each 
    #                          site included in sitenames.csv and each year listed
-   #        Result columns:   SiteYear       site & year (site description - year)
+   #        Result columns:   siteYear       site & year (site description - year)
    #                          Date_Time      date & time of each obs (year-month-day h:m:s)
    #                          DO             DO (in mg/L)
    #                          DO_Pct_Sat     DO (in % saturation)
@@ -26,7 +26,7 @@
    
    library(readxl)
    
-   col.names <- list(list('SiteYear', 'SiteYear'),                            # standard col name, variants
+   col.names <- list(list('siteYear', 'siteYear'),                            # standard col name, variants
                      list('Date_Time', c('SAMP_DATE_TIME', 'Date Time')), 
                      list('DO', c('DO_MGL2', 'DO_mgl', 'DO_MGL')),
                      list('DO_Pct_Sat', c('DP_SAT', 'DO_SAT')),
@@ -35,22 +35,24 @@
    
    sites <- read.csv('inst/sitenames.csv')
    sites <- sites[sites$include == TRUE,]
+   sy <- data.frame(matrix(NA, 0, 4))
    z <- matrix(NA, 0, 5)
    q <- rep(NA, dim(z)[2])
    for(i in 1:length(col.names)) q[i] <- col.names[[i]][[1]]
    colnames(z) <- q
-   print(colnames(z))
+   
    
    for(i in 1:dim(sites)[1]) {
       y <- as.integer(unlist(strsplit(sites$years[i], ',')))      # years
       
       for(j in y) {
+         sy <- rbind(sy, c(sites$site[i], sites$description[i], j, paste0(sites$description[i], ' - ', j)))
+         
          d <- paste0(source, 'location ', sites$site[i], '/')
          f <- paste0(sites$site[i], '_sensor_', j, '.xlsx')
          cat('Reading ', d, f, '\n', sep = '')
          x <- suppressWarnings(read_excel(paste0(d, f), sheet = 1))
-         x <- as.data.frame(x)
-         x$SiteYear <- paste0(sites$description[i], ' - ', j)
+         x$siteYear <- paste0(sites$description[i], ' - ', j)
          
          n <- names(x)                                            # find columns
          c <- rep(NA, length(col.names))
@@ -61,12 +63,15 @@
             if(length(d) == 0) stop('Column ', col.names[[k]][[1]], ' not found\n')
             c[k] <- d[1]                                          # first matching column name
          }
-        
+         
          x <- x[, c]                   # don't let rbind's miserable name matching mess us up
          names(x) <- q
          z <- rbind(z, x)
       }
    }
-   z$SiteYear <- as.factor(z$SiteYear)                          # SiteYear as factor, of course
+   colnames(sy) <- c('site', 'description', 'year', 'siteYear')
+   saveRDS(sy, 'inst/siteYear.RDS')
+   
+   z$siteYear <- as.factor(z$siteYear)                          # siteYear as factor, of course
    saveRDS(z, 'inst/sensors.RDS')
 }
