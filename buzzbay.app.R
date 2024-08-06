@@ -6,7 +6,8 @@ library(shiny)
 library(bslib)
 library(shinybusy)
 library(shinyWidgets)
-library(ggvis)
+# library(ggvis)
+library(dygraphs)
 
 
 sites <- read.csv('inst/sitenames.csv')
@@ -15,7 +16,7 @@ sites <- sites[sites$include == TRUE,]
 siteYear <- readRDS('inst/siteYear.RDS')
 sensors <- readRDS('inst/sensors.RDS')
 
-print(sites)
+#print(sites)
 siteYear <<- siteYear
 
 
@@ -45,12 +46,10 @@ ui <- page_sidebar(
          ),
          width = 340
       ),
-   mainPanel(
-      ggvisOutput(plot_id = 'dissolved_oxygen')
+
+   card(
+      ggvisOutput('plot')
    )
-   
-   
-   
 )
 
 
@@ -61,19 +60,13 @@ server <- function(input, output, session) {
    #bs_themer()                                 # uncomment to select a new theme
    #  print(getDefaultReactiveDomain())
    
-   # data |>
-   #    ggvis(x = ~rows, y = ~random) |>
-   #    bind_shiny('dissolved_oxygen')
-   
-   
-   
    
    observeEvent(input$siteYear, {
       session$userData$sensor <- sensors[sensors$siteYear == input$siteYear, ]
       zzz <<- session$userData$sensor
       minmax <- c(min(session$userData$sensor$Date_Time), max(session$userData$sensor$Date_Time))
       updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
-                        timeFormat = '%m-%d',
+                        timeFormat = '%b %e',
                         session = getDefaultReactiveDomain())
       
    })
@@ -84,14 +77,26 @@ server <- function(input, output, session) {
    })
    
    observeEvent(list(input$siteYear, input$period, input$units), {
-      cat('input$units = ', input$units, '\n', sep = '')
-      print(is.numeric(input$units))
-      cat("c('DO', 'DO_Pct_Sat')[input$units] = ", c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))], '\n', sep = '')
-      print(names(session$userData$window))
+      
+      #  cat('input$units = ', input$units, '\n', sep = '')
+      #   print(is.numeric(input$units))
+      #    cat("c('DO', 'DO_Pct_Sat')[input$units] = ", c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))], '\n', sep = '')
+      #    print(names(session$userData$window))
+      
       session$userData$window$units <- session$userData$window$DO  # [, 'DO']    #[, c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))]]
-      session$userData$window |>
-         ggvis(x = ~Date_Time, y = ~units) |>
-         bind_shiny('dissolved_oxygen')
+      print(names(session$userData$window))
+      
+       # session$userData$window |>
+      #    ggvis(x = ~Date_Time, y = ~units, stroke := 'purple') |>
+      #    layer_lines() |>
+      #    add_axis('x', title = 'Date') |>
+      #    add_axis('y', title = c('mg/L', '% saturation')[input$units]) |>
+      #    add_axis('x', orient = 'top', title = 'Dissolved oxygen',   
+      #             properties = axis_props(axis = list(stroke = 'white'), title = list(fontSize = 14), labels = list(fontSize = 0))) |>
+      #    bind_shiny('plot', 'plot_ui')
+      zz <<- session$userData$window[, c('Date_Time', 'units')]
+      dygraph(zz) |>
+         bind_shiny('plot')
    })
 }   
 
