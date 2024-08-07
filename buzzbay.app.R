@@ -2,22 +2,25 @@
 # B. Compton, 31 Jul 2024
 
 
+
 library(shiny)
 library(bslib)
 library(shinybusy)
 library(shinyWidgets)
-# library(ggvis)
 library(dygraphs)
+# library(xts)
+
+source('dygraphs_plugins.R')
 
 
+unit.vars <- c('DO', 'DO_Pct_Sat')
+unit.names <- c('mg/L', '% saturation')
 sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
 siteYear <- readRDS('inst/siteYear.RDS')
 sensors <- readRDS('inst/sensors.RDS')
 
-#print(sites)
-siteYear <<- siteYear
 
 
 # User interface ---------------------
@@ -33,7 +36,7 @@ ui <- page_sidebar(
          card(
             selectInput('siteYear', label = 'Site', choices = siteYear$siteYear),
             sliderInput('period', label = 'Time period', min = 6, max = 9, value = c(6, 9)), 
-            radioButtons('units', label = 'Units', choiceNames = list('mg/L', '% saturation'), choiceValues = 1:2),
+            radioButtons('units', label = 'Units', choiceNames = as.list(unit.names), choiceValues = 1:2),
             
             textInput('threshold', label = 'Comparison threshold', value = '', placeholder = 'n.nn',
                       width = '40%'),   
@@ -46,9 +49,10 @@ ui <- page_sidebar(
          ),
          width = 340
       ),
-
+   
    card(
-      ggvisOutput('plot')
+      dygraphOutput('plot'),
+      max_height = 500
    )
 )
 
@@ -68,35 +72,37 @@ server <- function(input, output, session) {
       updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
                         timeFormat = '%b %e',
                         session = getDefaultReactiveDomain())
+      session$userData$keep.date.window <- FALSE
       
    })
    
    observeEvent(list(input$siteYear, input$period), {
       session$userData$window <- session$userData$sensor[session$userData$sensor$Date_Time >= input$period[1] & 
-                                                            session$userData$sensor$Date_Time <= input$period[2], ]      
+                                                            session$userData$sensor$Date_Time <= input$period[2], ]   
+      session$userData$keep.date.window <- FALSE
    })
    
-   observeEvent(list(input$siteYear, input$period, input$units), {
-      
-      #  cat('input$units = ', input$units, '\n', sep = '')
-      #   print(is.numeric(input$units))
-      #    cat("c('DO', 'DO_Pct_Sat')[input$units] = ", c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))], '\n', sep = '')
-      #    print(names(session$userData$window))
-      
-      session$userData$window$units <- session$userData$window$DO  # [, 'DO']    #[, c('DO', 'DO_Pct_Sat')[as.integer(unlist(input$units))]]
-      print(names(session$userData$window))
-      
-       # session$userData$window |>
-      #    ggvis(x = ~Date_Time, y = ~units, stroke := 'purple') |>
-      #    layer_lines() |>
-      #    add_axis('x', title = 'Date') |>
-      #    add_axis('y', title = c('mg/L', '% saturation')[input$units]) |>
-      #    add_axis('x', orient = 'top', title = 'Dissolved oxygen',   
-      #             properties = axis_props(axis = list(stroke = 'white'), title = list(fontSize = 14), labels = list(fontSize = 0))) |>
-      #    bind_shiny('plot', 'plot_ui')
-      zz <<- session$userData$window[, c('Date_Time', 'units')]
-      dygraph(zz) |>
-         bind_shiny('plot')
+   observeEvent(input$units, {
+      session$userData$keep.date.window <- TRUE
+   })
+   
+   observeEvent(input$grab.bag, {                        # nothing here yet
+      session$userData$keep.date.window <- TRUE
+   })
+   
+   observeEvent(list(input$siteYear, input$period, input$units, input$grab.bag), {
+      vars <- session$userData$window[, c('Date_Time', unit.vars[as.integer(input$units)])]
+      #  vars <- xts(vars[,-1], vars[,1])
+      output$plot <- renderDygraph({
+         dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
+            dyAxis('x', gridLineColor = '#D0D0D0') |>
+            dyAxis('y', gridLineColor = '#D0D0D0') |>
+            dySeries(color = '#3C2692') |>
+            #    dySeries('grab.bag', drawPoints = TRUE, strokeWidth = 0) |>     # this is how we'll do grab-bag points
+            dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
+            dyUnzoom() |>
+            dyCrosshair(direction = "vertical")
+      })
    })
 }   
 

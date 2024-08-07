@@ -50,7 +50,7 @@
          
          d <- paste0(source, 'location ', sites$site[i], '/')
          f <- paste0(sites$site[i], '_sensor_', j, '.xlsx')
-         cat('\nData file: ', d, f, '\n', sep = '')
+         cat('\nData file: ', f, '\n\n', sep = '')
          x <- suppressWarnings(read_excel(paste0(d, f), sheet = 1))
          x$siteYear <- paste0(sites$description[i], ' - ', j)
          
@@ -69,6 +69,16 @@
          
          x <- x[, c]                   # don't let rbind's miserable name matching mess us up
          names(x) <- q
+         
+         b <- sum(x$DO < 0, na.rm = TRUE) + sum(x$DO_Pct_Sat < 0, na.rm = TRUE)  # set negative values to NA
+         x$DO[x$DO < 0] <- NA
+         x$DO_Pct_Sat[x$DO_Pct_Sat < 0] <- NA
+         
+         cat('\n', format(dim(x)[1], big.mark = ','), ' cases.', sep = '')
+         if(b > 0)
+            cat(' ', b, ' negative DO value', 's'[b != 1], ' set to missing.', sep = '')
+         cat('\n\n')
+         
          z <- rbind(z, x)
       }
    }
