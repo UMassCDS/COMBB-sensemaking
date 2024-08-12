@@ -86,5 +86,7 @@
    saveRDS(sy, 'inst/siteYear.RDS')
    
    z$siteYear <- as.factor(z$siteYear)                          # siteYear as factor, of course
+   z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + 4 * 60 * 60    # kludge up the time so dygraphs gives us times in EDI
+   
    saveRDS(z, 'inst/sensors.RDS')
 }
