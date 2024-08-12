@@ -8,9 +8,8 @@ library(bslib)
 library(shinybusy)
 library(shinyWidgets)
 library(dygraphs)
-
 library(lubridate)
-#library(xts)
+
 
 source('dygraphs_plugins.R')
 
@@ -22,10 +21,6 @@ sites <- sites[sites$include == TRUE,]
 
 siteYear <- readRDS('inst/siteYear.RDS')
 all.sensors <- readRDS('inst/sensors.RDS')
-
-
-#  all.sensors <- all.sensors[1:200,]
-#   zz1 <<- all.sensors
 
 
 
@@ -75,29 +70,13 @@ server <- function(input, output, session) {
    observe({                                                   # --- New site/year selected. Update time period slider
       session$userData$sensor <- all.sensors[all.sensors$siteYear == input$siteYear, ]
       minmax <- c(min(session$userData$sensor$Date_Time), max(session$userData$sensor$Date_Time))
-      
-      #   print(minmax)
-      #   qq1 <<- minmax
-      #      minmax <- as.POSIXct(minmax, tz = 'America/New_York') + 4 * 60 * 60    # time zone kludge - this causes slider date to not match data sometimes
-      #   minmax <- as.POSIXct(minmax, tx = 'UTC') #+ 4 * 60 * 60    # time zone kludge
-      #   print(minmax)
-      #   qq2 <<- minmax
       updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
                         timeFormat = '%b %e', session = getDefaultReactiveDomain())
-      
-      #   updateSliderInput('period', min = minmax[1], max = minmax[2], step = 24 * 60 * 60, value = minmax,
-      #                    timezone = '-0400', timeFormat = '%b %e', session = getDefaultReactiveDomain())
       session$userData$keep.date.window <- FALSE
    })
    
    observeEvent(input$period, {                                # --- Time period changed, so reset date window
-      
-      #   print(input$period)
-      #session$userData$period <- input$period
-      #session$userData$period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60   
-      
-      session$userData$period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60
-      #   print(session$userData$period)
+      session$userData$period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60  # round to midnight (adjusted for EDT)
       session$userData$keep.date.window <- FALSE
    })
    
@@ -114,10 +93,7 @@ server <- function(input, output, session) {
       vars <- session$userData$sensor[session$userData$sensor$Date_Time >= session$userData$period[1] &
                                          session$userData$sensor$Date_Time <= session$userData$period[2],
                                       c('Date_Time', unit.vars[as.integer(input$units)])]
-         print(head(vars))
-         cat('---\n')
-         
-         
+      
       if(dim(vars)[1] > 0) {
          output$plot <- renderDygraph({
             dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
