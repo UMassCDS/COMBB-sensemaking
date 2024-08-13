@@ -25,14 +25,14 @@ all.sensors <- readRDS('inst/sensors.RDS')
 
 aggreg.choices = list('None' = 0, 'Hourly' = 1, '4 hours' = 4, '8 hours' = 8, '12 hours' = 12, 'Daily' = 24, 
                       'Weekly' = 7 * 24, 'Bi-weekly' = 14 * 24, '30 days' = 30 & 24, 'Entire period' = 1e6)
-method.choices = c('Mean', 'Minimum', '5th percentile', '10th percentile', 'Median', 
-                  'Maximum', 'Standard deviation', 'Percent exceedence')
+method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
+                   'Maximum' = 'max', 'Standard deviation' = 'sd', 'Percent exceedence' = 'pe')
 
 
 
 # User interface ---------------------
 ui <- page_sidebar(
-   theme = bs_theme(bootswatch = 'cerulean', version = 5),     # bslib version defense. Use version_default() to update
+   theme = bs_theme(bootswatch = 'cosmo', version = 5),     # bslib version defense. Use version_default() to update
    useShinyjs(),
    
    title = 'buzzbay (dev version)',
@@ -48,14 +48,12 @@ ui <- page_sidebar(
             
             radioButtons('units', label = 'Units', choiceNames = as.list(unit.names), choiceValues = 1:2),
             
-            hr(),
-            
             numericInput('threshold', label = 'Comparison threshold', value = '',
-                         step = 0.1, width = '40%'),   
+                         min = 0, step = 1),   
             materialSwitch(inputId = 'plot.threshold', label = 'Plot comparison threshold', 
                            value = FALSE),
             numericInput('exceedance', label = 'Exceedance threshold (%)', value = '',
-                         step = 1, width = '40%'),
+                         min = 0, max = 100, step = 1),
             materialSwitch(inputId = 'grab.bag', label = 'Display grab-bag samples', 
                            value = FALSE),
             
@@ -70,7 +68,7 @@ ui <- page_sidebar(
             
             actionLink('aboutSite', label = 'About this site'),
             br(),
-            tags$img(height = 103, width = 178, src = 'umass_logo.png')
+            tags$img(height = 77, width = 133, src = 'umass_logo.png')
          ),
          width = 340
       ),
@@ -86,8 +84,8 @@ ui <- page_sidebar(
 # Server -----------------------------
 server <- function(input, output, session) {
    
-   #bs_themer()                                                # uncomment to select a new theme
-   #  print(getDefaultReactiveDomain())
+   # bs_themer()                                                # uncomment to select a new theme
+   # print(getDefaultReactiveDomain())
    
    disable('period')                                           # this is dim while it shows 0,0
    
@@ -95,6 +93,7 @@ server <- function(input, output, session) {
    observe({                                                   # --- New site/year selected. Update time period slider
       session$userData$sensor <- all.sensors[all.sensors$siteYear == input$siteYear, ]
       minmax <- c(min(session$userData$sensor$Date_Time), max(session$userData$sensor$Date_Time))
+      freezeReactiveValue(input, 'period')
       updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
                         timeFormat = '%b %e', session = getDefaultReactiveDomain())
       enable('period')
@@ -102,9 +101,11 @@ server <- function(input, output, session) {
    })
    
    
-   observeEvent(input$units, {                                 # --- Units changed, so keep date window
-      session$userData$keep.date.window <- TRUE
-   })
+   # observeEvent(input$units, {                                 # --- Units changed, so keep date window
+   #    updateNumericInput('threshold', label = paste0('Comparison threshold ',  ifelse(input$units == 1, '(mg/L)', '(% saturation)')), 
+   #                       value = ifelse(input$units == 1, 5, 75), session = getDefaultReactiveDomain())
+   #    session$userData$keep.date.window <- TRUE
+   # })
    
    
    observeEvent(input$grab.bag, {                              # --- Grab bag. Keep date window        
@@ -113,30 +114,89 @@ server <- function(input, output, session) {
    })
    
    
-   observeEvent(list(input$siteYear, input$period, input$units, input$grab.bag), {     # --- Draw the plot
-      period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60  # round to midnight (adjusted for EDT)
-      vars <- session$userData$sensor[session$userData$sensor$Date_Time >= period[1] &
-                                         session$userData$sensor$Date_Time <= period[2],
-                                      c('Date_Time', unit.vars[as.integer(input$units)])]
-      
-      if(!identical(input$period, session$userData$period))    # if time period changed, reset date window
-         session$userData$keep.date.window <- FALSE
-      session$userData$period <- input$period
-      
-      if(dim(vars)[1] > 0) {
-         output$plot <- renderDygraph({
-            dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
-               dyOptions(useDataTimezone = TRUE) |>
-               dyAxis('x', gridLineColor = '#D0D0D0') |>
-               dyAxis('y', gridLineColor = '#D0D0D0') |>
-               dySeries(color = '#3C2692') |>
-               #    dySeries('grab.bag', drawPoints = input$grab.bag, strokeWidth = 0) |>     # this is how we'll do grab-bag points
-               dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
-               dyUnzoom() |>
-               dyCrosshair(direction = "vertical")
-         })
+   observeEvent(input$interval, {                              # --- Aggregation interval
+      if(input$interval == 0) {
+         disable('method')
+         disable('moving.window')
       }
+      else 
+      {
+         enable('method')
+         enable('moving.window')
+      }
+      session$userData$keep.date.window <- TRUE
    })
+   
+   
+   
+   observeEvent(input$method, {                                # --- Aggregation method
+      
+      session$userData$keep.date.window <- TRUE
+   })
+   
+   
+   observeEvent(list(input$siteYear, input$period, input$units, input$grab.bag,                   # --- Draw the plot
+                     input$threshold, input$plot.threshold, input$grab.bag, input$interval,
+                     input$method, input$moving.window), {
+                        
+                        period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60  # round to midnight (adjusted for EDT)
+                        vars <- session$userData$sensor[session$userData$sensor$Date_Time >= period[1] &
+                                                           session$userData$sensor$Date_Time <= period[2],
+                                                        c('Date_Time', unit.vars[as.integer(input$units)])]
+                        
+                           
+                      #   print(Sys.time())
+                        
+                        if(!identical(input$units, session$userData$units)) {    # if units change,
+                           freezeReactiveValue(input,'threshold')
+                           updateNumericInput('threshold', label = paste0('Comparison threshold ',  ifelse(input$units == 1, '(mg/L)', '(% saturation)')), 
+                                              value = ifelse(input$units == 1, 5, 75), session = getDefaultReactiveDomain())
+                           session$userData$keep.date.window <- TRUE
+                        }
+                        session$userData$units <- input$units
+                        
+                        
+                        if(!identical(input$period, session$userData$period))    # if time period changed, reset date window
+                           session$userData$keep.date.window <- FALSE
+                        session$userData$period <- input$period
+                        
+                        
+                        if(!identical(input$siteYear, session$userData$siteYear))    # if site or year changed, reset date window
+                           session$userData$keep.date.window <- FALSE
+                        session$userData$siteYear <- input$siteYear
+                        
+                        
+                        
+                        
+                        if(dim(vars)[1] > 0) {
+                           
+                           show.threshold <- input$plot.threshold & (input$interval == 0 | (!input$method %in% c('sd', 'pe')))   # plot threshold if switch is on and we're not
+                        # if(show.threshold) {                                                                                     #    aggregating by SD or % exceedance
+                        #     #  vars <- cbind(vars, threshold = input$threshold)
+                        #       session$userData$keep.date.window <- TRUE
+                        #    }
+                           
+                           output$plot <- renderDygraph({
+                              graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
+                                 dyOptions(useDataTimezone = TRUE) |>
+                                 dyAxis('x', gridLineColor = '#D0D0D0') |>
+                                 dyAxis('y', gridLineColor = '#D0D0D0') |>
+                                 dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
+                                 dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
+                                 dyUnzoom() |>
+                                 dyCrosshair(direction = "vertical")
+                              
+                              #  print(show.threshold)
+                              if(show.threshold)
+                                 graph <- dyLimit(graph, input$threshold, color = 'gray')
+                                # graph <- dySeries(graph, 'threshold', color = 'gray')
+                              
+                              #    dySeries('grab.bag', drawPoints = input$grab.bag, strokeWidth = 0)     # this is how we'll do grab-bag points
+                              
+                              graph
+                           })
+                        }
+                     })
 }   
 
 
