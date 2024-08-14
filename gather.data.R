@@ -13,7 +13,7 @@
    # Result:
    #     'inst/sensors.RDS'   file containing a data frame with target variables for each 
    #                          site included in sitenames.csv and each year listed
-   #        Result columns:   siteYear       site & year (site description - year)
+   #        Result columns:   Site_Year       site & year (site description - year)
    #                          Date_Time      date & time of each obs (year-month-day h:m:s)
    #                          DO             DO (in mg/L)
    #                          DO_Pct_Sat     DO (in % saturation)
@@ -26,7 +26,7 @@
    
    library(readxl)
    
-   col.names <- list(list('siteYear', 'siteYear'),                            # standard col name, variants
+   col.names <- list(list('Site_Year', 'Site_Year'),                            # standard col name, variants
                      list('Date_Time', c('SAMP_DATE_TIME', 'Date Time')), 
                      list('DO', c('DO_MGL2', 'DO_mgl', 'DO_MGL')),
                      list('DO_Pct_Sat', c('DP_SAT', 'DO_SAT')),
@@ -52,7 +52,7 @@
          f <- paste0(sites$site[i], '_sensor_', j, '.xlsx')
          cat('\nData file: ', f, '\n\n', sep = '')
          x <- suppressWarnings(read_excel(paste0(d, f), sheet = 1))
-         x$siteYear <- paste0(sites$description[i], ' - ', j)
+         x$Site_Year <- paste0(sites$description[i], ' - ', j)
          
          n <- names(x)                                            # find columns
          c <- rep(NA, length(col.names))
@@ -82,10 +82,10 @@
          z <- rbind(z, x)
       }
    }
-   colnames(sy) <- c('site', 'description', 'year', 'siteYear')
-   saveRDS(sy, 'inst/siteYear.RDS')
+   colnames(sy) <- c('site', 'description', 'year', 'Site_Year')
+   saveRDS(sy, 'inst/Site_Year.RDS')
    
-   z$siteYear <- as.factor(z$siteYear)                          # siteYear as factor, of course
+   z$Site_Year <- as.factor(z$Site_Year)                          # Site_Year as factor, of course
    z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + 4 * 60 * 60    # kludge up the time so dygraphs gives us times in EDI
    
    saveRDS(z, 'inst/sensors.RDS')

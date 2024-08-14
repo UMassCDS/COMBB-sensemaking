@@ -5,10 +5,12 @@
 
 library(shiny)
 library(bslib)
+library(dygraphs)
+library(sinaplot)
+library(DT)
+library(lubridate)
 library(shinybusy)
 library(shinyWidgets)
-library(dygraphs)
-library(lubridate)
 library(shinyjs)
 
 
@@ -29,7 +31,7 @@ method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', 
 sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
-siteYear <- readRDS('inst/siteYear.RDS')
+Site_Year <- readRDS('inst/Site_Year.RDS')
 all.sensors <- readRDS('inst/sensors.RDS')
 
 
@@ -46,7 +48,7 @@ ui <- page_sidebar(
          add_busy_spinner(spin = 'fading-circle', position = 'top-left', onstart = FALSE, timeout = 500),
          
          card(
-            selectInput('siteYear', label = 'Site and year', choices = siteYear$siteYear),
+            selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year),
             
             sliderInput('period', label = 'Time period', min = 0, max = 0, value = c(0, 0)),
             
@@ -57,6 +59,8 @@ ui <- page_sidebar(
             
             materialSwitch('plot.threshold', label = 'Plot comparison threshold', 
                            value = FALSE),
+            
+            materialSwitch('dist.plot', label = 'Show distribution plot', value = FALSE),
             
             numericInput('exceedance', label = 'Exceedance threshold (%)', value = '',
                          min = 0, max = 100, step = 1),
@@ -80,9 +84,20 @@ ui <- page_sidebar(
       ),
    
    card(
-      dygraphOutput('plot'),
-      max_height = 500
-   )
+      navset_pill(
+         nav_panel('Plot',
+            fluidRow(
+               column(width = 10,
+                   dygraphOutput('plot')
+               ),
+               column(width = 2, 
+                      plotOutput('sinaplot'))
+            )
+         ),
+         nav_panel('Table',
+                   DTOutput('table'))
+         )
+      )
 )
 
 
@@ -100,8 +115,8 @@ server <- function(input, output, session) {
                                     c(min(all.sensors$DO_Pct_Sat, na.rm = TRUE), max(all.sensors$DO_Pct_Sat, na.rm = TRUE)))
    
    
-   observeEvent(input$siteYear, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
-      session$userData$sensor <- all.sensors[all.sensors$siteYear == input$siteYear, ] 
+   observeEvent(input$Site_Year, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
+      session$userData$sensor <- all.sensors[all.sensors$Site_Year == input$Site_Year, ] 
       
       minmax <- c(min(session$userData$sensor$Date_Time), max(session$userData$sensor$Date_Time))
       freezeReactiveValue(input, 'period')
@@ -115,7 +130,7 @@ server <- function(input, output, session) {
    
    observeEvent(input$period, {                                      # --- Period selected. Select site, year, and period
       period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60  # round to midnight (adjusted for EDT)
-      session$userData$sensor <- all.sensors[all.sensors$siteYear == input$siteYear &
+      session$userData$sensor <- all.sensors[all.sensors$Site_Year == input$Site_Year &
                                                 all.sensors$Date_Time >= period[1] & all.sensors$Date_Time <= period[2], ]
       session$userData$keep.date.window <- FALSE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
@@ -152,7 +167,7 @@ server <- function(input, output, session) {
    })
    
    
-   observeEvent(list(input$grab.bag, input$threshold, input$plot.threshold, input$exceedance), {      # --- Remaining controls that don't need to do anything but keep date window        
+   observeEvent(list(input$dist.plot, input$grab.bag, input$threshold, input$plot.threshold, input$exceedance), {      # --- Remaining controls that don't need to do anything but keep date window        
       session$userData$keep.date.window <- TRUE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
