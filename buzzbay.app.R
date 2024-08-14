@@ -26,7 +26,6 @@ all.sensors <- readRDS('inst/sensors.RDS')
 y.range <- list(c(min(all.sensors$DO, na.rm = TRUE), max(all.sensors$DO, na.rm = TRUE)), 
                 c(min(all.sensors$DO_Pct_Sat, na.rm = TRUE), max(all.sensors$DO_Pct_Sat, na.rm = TRUE)))
 
-print(y.range)
 
 aggreg.choices = list('None' = 0, 'Hourly' = 1, '4 hours' = 4, '8 hours' = 8, '12 hours' = 12, 'Daily' = 24, 
                       'Weekly' = 7 * 24, 'Bi-weekly' = 14 * 24, '30 days' = 30 & 24, 'Entire period' = 1e6)
@@ -67,12 +66,11 @@ ui <- page_sidebar(
             selectInput('method', label = 'Aggregation method', choices = method.choices, 
                         selected = 'median'),
             
-            materialSwitch(inputId = 'moving.window', label = 'Moving window'),
+            materialSwitch(inputId = 'moving.window', label = 'Smooth data'),
             
-            hr(),
-            
-            actionLink('aboutSite', label = 'About this site'),
             br(),
+            hr(),
+
             tags$img(height = 77, width = 133, src = 'umass_logo.png')
          ),
          width = 340
@@ -174,10 +172,8 @@ server <- function(input, output, session) {
                         if(dim(vars)[1] > 0) {
                            
                            show.threshold <- input$plot.threshold & (input$interval == 0 | (!input$method %in% c('sd', 'pe')))   # plot threshold if switch is on and we're not
-                           # if(show.threshold) {                                                                                     #    aggregating by SD or % exceedance
-                           #     #  vars <- cbind(vars, threshold = input$threshold)
-                           #       session$userData$keep.date.window <- TRUE
-                           #    }
+                                                                                                     #    aggregating by SD or % exceedance
+                   
                            
                            output$plot <- renderDygraph({
                               graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
@@ -190,17 +186,18 @@ server <- function(input, output, session) {
                                  dyUnzoom() |>
                                  dyCrosshair(direction = "vertical")
                               
-                              
-                              #  print(show.threshold)
+                           
                               if(show.threshold)
                                  graph <- dyLimit(graph, input$threshold, color = 'gray')
-                              # graph <- dySeries(graph, 'threshold', color = 'gray')
-                              
+                               
                               #    dySeries('grab.bag', drawPoints = input$grab.bag, strokeWidth = 0)     # this is how we'll do grab-bag points
                               
                               graph
                            })
                         }
+                        
+                        
+                        
                      })
 }   
 
