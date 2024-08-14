@@ -23,6 +23,11 @@ sites <- sites[sites$include == TRUE,]
 siteYear <- readRDS('inst/siteYear.RDS')
 all.sensors <- readRDS('inst/sensors.RDS')
 
+y.range <- list(c(min(all.sensors$DO, na.rm = TRUE), max(all.sensors$DO, na.rm = TRUE)), 
+                c(min(all.sensors$DO_Pct_Sat, na.rm = TRUE), max(all.sensors$DO_Pct_Sat, na.rm = TRUE)))
+
+print(y.range)
+
 aggreg.choices = list('None' = 0, 'Hourly' = 1, '4 hours' = 4, '8 hours' = 8, '12 hours' = 12, 'Daily' = 24, 
                       'Weekly' = 7 * 24, 'Bi-weekly' = 14 * 24, '30 days' = 30 & 24, 'Entire period' = 1e6)
 method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
@@ -144,8 +149,8 @@ server <- function(input, output, session) {
                                                            session$userData$sensor$Date_Time <= period[2],
                                                         c('Date_Time', unit.vars[as.integer(input$units)])]
                         
-                           
-                      #   print(Sys.time())
+                        
+                        #   print(Sys.time())
                         
                         if(!identical(input$units, session$userData$units)) {    # if units change,
                            freezeReactiveValue(input,'threshold')
@@ -166,30 +171,30 @@ server <- function(input, output, session) {
                         session$userData$siteYear <- input$siteYear
                         
                         
-                        
-                        
                         if(dim(vars)[1] > 0) {
                            
                            show.threshold <- input$plot.threshold & (input$interval == 0 | (!input$method %in% c('sd', 'pe')))   # plot threshold if switch is on and we're not
-                        # if(show.threshold) {                                                                                     #    aggregating by SD or % exceedance
-                        #     #  vars <- cbind(vars, threshold = input$threshold)
-                        #       session$userData$keep.date.window <- TRUE
-                        #    }
+                           # if(show.threshold) {                                                                                     #    aggregating by SD or % exceedance
+                           #     #  vars <- cbind(vars, threshold = input$threshold)
+                           #       session$userData$keep.date.window <- TRUE
+                           #    }
                            
                            output$plot <- renderDygraph({
                               graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
                                  dyOptions(useDataTimezone = TRUE) |>
                                  dyAxis('x', gridLineColor = '#D0D0D0') |>
-                                 dyAxis('y', gridLineColor = '#D0D0D0') |>
+                                 dyAxis('y', gridLineColor = '#D0D0D0',  valueRange = y.range[[as.numeric(input$units)]]) |>
+                                 
                                  dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
                                  dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
                                  dyUnzoom() |>
                                  dyCrosshair(direction = "vertical")
                               
+                              
                               #  print(show.threshold)
                               if(show.threshold)
                                  graph <- dyLimit(graph, input$threshold, color = 'gray')
-                                # graph <- dySeries(graph, 'threshold', color = 'gray')
+                              # graph <- dySeries(graph, 'threshold', color = 'gray')
                               
                               #    dySeries('grab.bag', drawPoints = input$grab.bag, strokeWidth = 0)     # this is how we'll do grab-bag points
                               
