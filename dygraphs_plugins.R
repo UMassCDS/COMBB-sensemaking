@@ -5,6 +5,9 @@
 
 dyCrosshair <- function(dygraph, 
                         direction = c("both", "horizontal", "vertical")) {
+   
+   # show a vertical crosshair for mouse
+   
    dyPlugin(
       dygraph = dygraph,
       name = "Crosshair",
@@ -16,6 +19,9 @@ dyCrosshair <- function(dygraph,
 
 
 dyUnzoom <-function(dygraph) {
+   
+   # put up "Reset zoom" button
+   
    dyPlugin(
       dygraph = dygraph,
       name = "Unzoom",
