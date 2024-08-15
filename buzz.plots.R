@@ -2,9 +2,7 @@
    
    # update time series and distribution plots, as well as tables for Buzzard's Bay app
    # Arguments: 
-   # 
-   # Result:
-   # 
+   #  input, output, session - Shiny variables
    # B. Compton, 14 Aug 2024 (pulled from buzzbay.app)
    
    
@@ -38,13 +36,23 @@
       })
       
       
-      if(input$dist.plot)
+      if(input$dist.plot) {                                                                                             # --- distribution plot, if selected and > 2 points
+         x <- vars[!is.na(vars[, 2]), 2][[1]]
          output$sinaplot <- renderPlot(
-            sinaplot(vars[!is.na(vars[, 2]), 2], xlab = '', pch = '.', seed = 1)
+            if(input$dist.plot & length(x) > 2) {
+               par(mai = c(0.75, 0, 0.25, 0))                        # margins: bottom, left, top, right (inches). Calibrated to dygraph.
+               par(col = '#3C2692')
+               sinaplot(x, xlab = '', pch = '.', cex = 1, seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
+                        xaxt = 'n', yaxt = 'n', lty = 0)
+            }
+            else
+               NULL
          )
+      }
+      
       
       if(!session$userData$keep.date.window)
-         output$table <- renderDT({                                                                                        # --- data table              
+         output$table <- renderDT({                                                                                     # --- data table (in 2nd tab)           
             table <- datatable(session$userData$sensor[, c('Date_Time', 'DO', 'DO_Pct_Sat')], 
                                colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)'),
                                options = list(dom = 'ltipr')) |>
@@ -55,9 +63,3 @@
          })
    }
 }
-
-
-# nice column names  
-# format date & time       x
-# round numbers (2 digits) x
-# persistent selections, as with plot

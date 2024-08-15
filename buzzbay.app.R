@@ -86,18 +86,18 @@ ui <- page_sidebar(
    card(
       navset_pill(
          nav_panel('Plot',
-            fluidRow(
-               column(width = 10,
-                   dygraphOutput('plot')
-               ),
-               column(width = 2, 
-                      plotOutput('sinaplot'))
-            )
+                   fluidRow(
+                      column(width = 11,
+                             dygraphOutput('plot')
+                      ),
+                      column(width = 1, 
+                             plotOutput('sinaplot'))
+                   )
          ),
          nav_panel('Table',
                    DTOutput('table'))
-         )
       )
+   )
 )
 
 
