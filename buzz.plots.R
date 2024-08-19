@@ -10,7 +10,7 @@
    #  cat(paste('--- buzz.plots, ', Sys.time(), '\n', sep = ''))
    
    
-   vars <- session$userData$sensor[, c('Date_Time', unit.vars[as.integer(input$units)])]
+   vars <- session$userData$sensor[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab.bag + 1)], unit.vars[as.integer(input$units)]))]
    
    if(dim(vars)[1] > 0) {
       
@@ -22,7 +22,8 @@
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0',  valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
             
-            dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
+           # dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
+            dySeries(names(vars)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             dyUnzoom() |>
             dyCrosshair(direction = "vertical")
@@ -30,20 +31,29 @@
          if(show.threshold)
             graph <- dyLimit(graph, input$threshold, color = 'gray')
          
-         #    dySeries('grab.bag', drawPoints = input$grab.bag, strokeWidth = 0)     # this is how we'll do grab-bag points
-         
+         if(input$grab.bag)
+         #   graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'dot', pointSize = 3, color = 'green', strokeWidth = 0)     # grab-bag points
+            graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'circle', pointSize = 5, color = '#DB5920', strokeWidth = 0)     # grab-bag points
          graph
       })
       
       
       if(input$dist.plot) {                                                                                             # --- distribution plot, if selected and > 2 points
-         x <- vars[!is.na(vars[, 2]), 2][[1]]
+         #x <- vars[!is.na(vars[, 2]), -1]
+         x <- as.list(vars[, -1])                           # response variables (sensors and maybe grab-bag) as list
+         x <- lapply(x, function(v) v[!is.na(v)])           # remove missing
+         
+        #  xxx1 <<- x
+        # x <- list(as.vector(unlist(x[!is.na(x[,1]),1])), as.vector(unlist(x[!is.na(x[,2]),2])))
+         xxxx <<- x
          output$sinaplot <- renderPlot(
-            if(input$dist.plot & length(x) > 2) {
+            if(input$dist.plot) {
+               ##if(input$dist.plot & length(x) > 2) {
                par(mai = c(0.75, 0, 0.25, 0))                        # margins: bottom, left, top, right (inches). Calibrated to dygraph.
-               par(col = '#3C2692')
-               sinaplot(x, xlab = '', pch = '.', cex = 1, seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
-                        xaxt = 'n', yaxt = 'n', lty = 0)
+              #par(col = c('#3C2692', 'green'))
+               sinaplot(x, xlab = '', pch = c('.', 'o'), cex = c(1, 1), seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
+                        xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'))
+                #sinaplot(x)
             }
             else
                NULL

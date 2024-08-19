@@ -8,6 +8,7 @@ library(bslib)
 library(dygraphs)
 library(sinaplot)
 library(DT)
+library(dplyr)
 library(lubridate)
 library(shinybusy)
 library(shinyWidgets)
@@ -32,16 +33,22 @@ sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
 Site_Year <- readRDS('inst/Site_Year.RDS')
-all.sensors <- readRDS('inst/sensors.RDS')
+x <- readRDS('inst/data.RDS')
+all.sensors <- x[[1]]
+all.grab <- x[[2]]
 
+names(all.grab)[c(3, 4)] <- paste0('Grab_', names(all.grab)[c(3, 4)])
+all.sensors <- bind_rows(all.sensors, all.grab)
+xxx <<- all.sensors
 
+   
 
 # User interface ---------------------
 ui <- page_sidebar(
    theme = bs_theme(bootswatch = 'cosmo', version = 5),     # bslib version defense. Use version_default() to update
    useShinyjs(),
    
-   title = 'buzzbay (dev version)',
+   title = 'COMBB: Data Sensemaking Tool (alpha version)',
    
    sidebar = 
       sidebar(
@@ -55,17 +62,18 @@ ui <- page_sidebar(
             radioButtons('units', label = 'Units', choiceNames = as.list(unit.names), choiceValues = 1:2),
             
             numericInput('threshold', label = 'Comparison threshold', value = '',
-                         min = 0, step = 1),   
+                         min = 0, step = 1),  
+            
+            numericInput('exceedance', label = 'Exceedance threshold (%)', value = '',
+                         min = 0, max = 100, step = 1),
+            
             
             materialSwitch('plot.threshold', label = 'Plot comparison threshold', 
                            value = FALSE),
             
             materialSwitch('dist.plot', label = 'Show distribution plot', value = FALSE),
             
-            numericInput('exceedance', label = 'Exceedance threshold (%)', value = '',
-                         min = 0, max = 100, step = 1),
-            
-            materialSwitch('grab.bag', label = 'Display grab-bag samples', 
+            materialSwitch('grab.bag', label = 'Plot grab-bag samples', 
                            value = FALSE),
             
             selectInput('interval', label = 'Aggregation interval', choices = aggreg.choices),
