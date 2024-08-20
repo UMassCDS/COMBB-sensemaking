@@ -8,7 +8,6 @@ library(bslib)
 library(dygraphs)
 library(sinaplot)
 library(DT)
-library(dplyr)
 library(lubridate)
 library(shinybusy)
 library(shinyWidgets)
@@ -28,18 +27,12 @@ method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', 
                    'Maximum' = 'max', 'Standard deviation' = 'sd', 'Percent exceedence' = 'pe')
 
 
-# Read site, sensor, and grab bag data
+# Read site, dataset, and grab bag data
 sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
 Site_Year <- readRDS('inst/Site_Year.RDS')
-x <- readRDS('inst/data.RDS')
-all.sensors <- x[[1]]
-all.grab <- x[[2]]
-
-names(all.grab)[c(3, 4)] <- paste0('Grab_', names(all.grab)[c(3, 4)])
-all.sensors <- bind_rows(all.sensors, all.grab)
-xxx <<- all.sensors
+data <- readRDS('inst/data.RDS')
 
    
 
@@ -119,14 +112,14 @@ server <- function(input, output, session) {
    disable('period')                                                 # this is dim while it shows 0,0
    
    
-   session$userData$y.range <- list(c(min(all.sensors$DO, na.rm = TRUE), max(all.sensors$DO, na.rm = TRUE)),         # full range of DO data
-                                    c(min(all.sensors$DO_Pct_Sat, na.rm = TRUE), max(all.sensors$DO_Pct_Sat, na.rm = TRUE)))
+   session$userData$y.range <- list(c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE)),         # full range of DO data
+                                    c(min(c(data$DO_Pct_Sat, data$Grab_DO_Pct_Sat), na.rm = TRUE), max(c(data$DO_Pct_Sat, data$Grab_DO_Pct_Sat), na.rm = TRUE)))
    
    
    observeEvent(input$Site_Year, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
-      session$userData$sensor <- all.sensors[all.sensors$Site_Year == input$Site_Year, ] 
+      session$userData$dataset <- data[data$Site_Year == input$Site_Year, ] 
       
-      minmax <- c(min(session$userData$sensor$Date_Time), max(session$userData$sensor$Date_Time))
+      minmax <- c(min(session$userData$dataset$Date_Time), max(session$userData$dataset$Date_Time))
       freezeReactiveValue(input, 'period')
       updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
                         timeFormat = '%b %e', session = getDefaultReactiveDomain())
@@ -138,8 +131,8 @@ server <- function(input, output, session) {
    
    observeEvent(input$period, {                                      # --- Period selected. Select site, year, and period
       period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60  # round to midnight (adjusted for EDT)
-      session$userData$sensor <- all.sensors[all.sensors$Site_Year == input$Site_Year &
-                                                all.sensors$Date_Time >= period[1] & all.sensors$Date_Time <= period[2], ]
+      session$userData$dataset <- data[data$Site_Year == input$Site_Year &
+                                                data$Date_Time >= period[1] & data$Date_Time <= period[2], ]
       session$userData$keep.date.window <- FALSE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })

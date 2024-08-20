@@ -7,29 +7,34 @@
    #                          years (comma-separated vector of available years). Excel file
    #                          is constructed from site and year.
    # Source data:
-   #     '*.xlsx'             sensor or grab bag data files. We assume that data are in the
+   #     '*.xlsx'             sensor or grab-bag data files. We assume that data are in the
    #                          first sheet of each file. Column names are a mess. We rename 
    #                          them to result names.
    # Result:
    #     'inst/data.RDS'      file containing a list with:
    #                             (1) a data frame with target variables for each site 
    #                             included in sitenames.csv and each year listed
-   #        Result columns:      Site_Year       site & year (site description - year)
-   #                             Date_Time      date & time of each obs (year-month-day h:m:s)
-   #                             DO             DO (in mg/L)
-   #                             DO_Pct_Sat     DO (in % saturation)
-   #                             Temp_CondLog   temperature (C)
-   #                             (2) a data frame with the same data for grab-bags (skipping the temperature)
+   #        Result columns:      Site_Year         site & year (site description - year)
+   #                             Date_Time         date & time of each obs (year-month-day h:m:s)
+   #                             DO                DO from sensors (mg/L)
+   #                             DO_Pct_Sat        DO from sensors (% saturation)
+   #                             Temp_CondLog      temperature (C)
+   #                             Grab_DO           DO from grab-bags (mg/L)
+   #                             Grab_DO_Pct_Sat   DO from grab-bags (% saturation)
    # Notes: (1) if a sensor/grab bag file matches more than one column name variant, the first one
    #            listed in col.names will be chosen. (This is what happens when your data are a mess. Grr.)
    #        (2) sensor files are .xlsx, grab-bag files are .xls
    #        (3) grab-bag files have two TIME columns. I'm just using the first - I think they're the same.   
-   #        (4) grab-bag data don't have negative values, so I'm not cleaning these up        
+   #        (4) grab-bag data don't have negative values, so I'm not cleaning these up
+   #        (5) sensor and grab-bag data are combined, with shared site/year and date/time columns. Sensor DO 
+   #            values are imputed to prevent breaks in sensor data lines when plotted; will be dropped when calculating
    # B. Compton, 31 Jul 2024
    
    
    
    library(readxl)
+   library(dplyr)
+   
    
    col.names <- list(list('Site_Year', 'Site_Year'),                            # standard col name, variants
                      list('Date_Time', c('SAMP_DATE_TIME', 'Date Time')), 
@@ -38,7 +43,7 @@
                      list('Temp_CondLog', c('Temp_C_condlogger', 'TEMP_C')))
    
    
-   'as.date' <- function(x) substr(format(as.POSIXct(x)), 1, 10)
+   'fmt.date' <- function(x) substr(format(as.POSIXct(x)), 1, 10)
    
    
    sites <- read.csv('inst/sitenames.csv')
@@ -84,7 +89,7 @@
          x$DO[x$DO < 0] <- NA
          x$DO_Pct_Sat[x$DO_Pct_Sat < 0] <- NA
          
-         cat('\n', format(dim(x)[1], big.mark = ','), ' cases; date range = ', as.date(min(x$Date_Time)), ' - ', as.date(max(x$Date_Time)), sep = '')
+         cat('\n', format(dim(x)[1], big.mark = ','), ' cases; date range = ', fmt.date(min(x$Date_Time)), ' - ', fmt.date(max(x$Date_Time)), sep = '')
          if(b > 0)
             cat(' ', b, ' negative DO value', 's'[b != 1], ' set to missing.', sep = '')
          cat('\n\n')
@@ -107,10 +112,10 @@
          suppressWarnings(x$DO <- as.numeric(x$DO))               #       these come in as character
          x$DO_Pct_Sat <- x$DO_Pct_Sat * 100                       #       remove annoying % from DO_Pct_Sat (it gets interpreted as proportion, not percent)
          
-         cat(format(dim(x)[1], big.mark = ','), ' cases; date range = ', as.date(min(x$Date_Time)), ' - ', as.date(max(x$Date_Time)), '\n', sep = '')
+         cat(format(dim(x)[1], big.mark = ','), ' cases; date range = ', fmt.date(min(x$Date_Time)), ' - ', fmt.date(max(x$Date_Time)), '\n', sep = '')
          
          x <- x[x$Date_Time >= date.range[1] & x$Date_Time <= date.range[2], ]
-         cat('Grab-bag dates trimmed to ', as.date(date.range[1]), ' - ', as.date(date.range[2]), '; ', format(dim(x)[1], big.mark = ','), ' cases.\n\n', sep = '')
+         cat('Grab-bag dates trimmed to ', fmt.date(date.range[1]), ' - ', fmt.date(date.range[2]), '; ', format(dim(x)[1], big.mark = ','), ' cases.\n\n', sep = '')
          cat('---\n')
          
          g <- rbind(g, x)
@@ -119,11 +124,32 @@
    colnames(sy) <- c('site', 'description', 'year', 'Site_Year')
    saveRDS(sy, 'inst/Site_Year.RDS')
    
-   z$Site_Year <- as.factor(z$Site_Year)                          # Site_Year as factor, of course
+   
+   # Combine sensor and grab-bag data into a single data frame, with Site_Year, Date_Time, DO, DO_Pct_Sat, Temp_CondLog, Grab_DO, Grab_DO_Pct_Sat, and Source
+   # Source is 1 for sensors, and 2 for grab-bags
+   
+   z$Source <- 1
+   g$Source <- 2
+   
    z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + 4 * 60 * 60    # kludge up the time so dygraphs gives us times in EDT
+   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York') + 4 * 60 * 60
    
-   g$Site_Year <- as.factor(g$Site_Year)                          # Site_Year as factor, of course
-   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York') + 4 * 60 * 60    # kludge up the time so dygraphs gives us times in EDT
    
-   saveRDS(list(z, g), 'inst/data.RDS')
+   names(g)[c(3, 4)] <- paste0('Grab_', names(g)[c(3, 4)])        # rename grab-bag DO columns
+   
+   z <- bind_rows(z, g)                                           # combine the two datasets
+   z$Site_Year <- as.factor(z$Site_Year)                          # Site_Year as factor, of course
+   
+   z <-z |> 
+      group_by(Site_Year, Date_Time, Source) |>                   # sort (include source so sensor data is imputed properly when grab bag is collected at
+      arrange(.by_group = TRUE)                                   # exact same time as sensor data, which does happen at least once)
+   
+   for(i in 1:dim(z)[1]) {                                        # impute sensor rows where NA is inserted to represent grab-bag data by copying previous value
+      if(z$Source[i] == 2 & is.na(z$DO[i]))                       # (we're assuming 1st row isn't grab-bag data; it isn't now)
+         z$DO[i] <- z$DO[i - 1]
+      if(z$Source[i] == 2 & is.na(z$DO_Pct_Sat[i]))
+         z$DO_Pct_Sat[i] <- z$DO_Pct_Sat[i - 1]
+   }
+   
+   saveRDS(z, 'inst/data.RDS')
 }

@@ -7,22 +7,19 @@
    
    
    
-   #  cat(paste('--- buzz.plots, ', Sys.time(), '\n', sep = ''))
-   
-   
-   vars <- session$userData$sensor[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab.bag + 1)], unit.vars[as.integer(input$units)]))]
+   vars <- session$userData$dataset[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab.bag + 1)], unit.vars[as.integer(input$units)]))]
    
    if(dim(vars)[1] > 0) {
       
-      show.threshold <- input$plot.threshold & (input$interval == 0 | (!input$method %in% c('sd', 'pe')))               # plot threshold if on and not aggregating by SD or % exceedance
+      show.threshold <- input$plot.threshold & (input$interval == 0 | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
       
-      output$plot <- renderDygraph({                                                                                    # --- time series plot
+      output$plot <- renderDygraph({                                                                        # --- time series plot
          graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
             dyOptions(useDataTimezone = TRUE) |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0',  valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
             
-           # dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
+            # dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
             dySeries(names(vars)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             dyUnzoom() |>
@@ -32,28 +29,22 @@
             graph <- dyLimit(graph, input$threshold, color = 'gray')
          
          if(input$grab.bag)
-         #   graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'dot', pointSize = 3, color = 'green', strokeWidth = 0)     # grab-bag points
             graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'circle', pointSize = 5, color = '#DB5920', strokeWidth = 0)     # grab-bag points
          graph
       })
       
       
-      if(input$dist.plot) {                                                                                             # --- distribution plot, if selected and > 2 points
-         #x <- vars[!is.na(vars[, 2]), -1]
-         x <- as.list(vars[, -1])                           # response variables (sensors and maybe grab-bag) as list
-         x <- lapply(x, function(v) v[!is.na(v)])           # remove missing
-         
-        #  xxx1 <<- x
-        # x <- list(as.vector(unlist(x[!is.na(x[,1]),1])), as.vector(unlist(x[!is.na(x[,2]),2])))
-         xxxx <<- x
+      if(input$dist.plot) {                                                                                 # --- distribution plot, if selected and > 2 points
+         x <- list(vars[session$userData$dataset$Source == 1, 2], vars[, c(-1, -2)])      # response variables (sensors and maybe grab-bag) as list; drop imputed sensor data
+         x <- lapply(x, function(v) v[!is.na(v)])                                         # remove missing
+         if(length(x[[2]]) < 2)                                                           # if only 1 grab-bag point, drop it as we can't plot
+            x <- x[1]
+
          output$sinaplot <- renderPlot(
-            if(input$dist.plot) {
-               ##if(input$dist.plot & length(x) > 2) {
+            if(input$dist.plot & length(x[[1]]) >= 2) {
                par(mai = c(0.75, 0, 0.25, 0))                        # margins: bottom, left, top, right (inches). Calibrated to dygraph.
-              #par(col = c('#3C2692', 'green'))
                sinaplot(x, xlab = '', pch = c('.', 'o'), cex = c(1, 1), seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
                         xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'))
-                #sinaplot(x)
             }
             else
                NULL
@@ -62,14 +53,13 @@
       
       
       if(!session$userData$keep.date.window)
-         output$table <- renderDT({                                                                                     # --- data table (in 2nd tab)           
-            table <- datatable(session$userData$sensor[, c('Date_Time', 'DO', 'DO_Pct_Sat')], 
+         output$table <- renderDT({                                                                         # --- data table (in 2nd tab)           
+            table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat')], 
                                colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)'),
                                options = list(dom = 'ltipr')) |>
                formatDate('Date_Time', 'toLocaleString') |>
                formatRound('DO', 2) |>
                formatRound('DO_Pct_Sat', 2)
-            
          })
    }
 }
