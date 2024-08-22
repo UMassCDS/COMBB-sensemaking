@@ -160,5 +160,5 @@
          z$DO_Pct_Sat[i] <- z$DO_Pct_Sat[i - 1]
    }
    
-   saveRDS(z, 'inst/data.RDS')
+   saveRDS(data.frame(z), 'inst/data.RDS')                        # un-tibble the results so we don't have problems later
 }

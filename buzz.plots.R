@@ -18,20 +18,25 @@
             dyOptions(useDataTimezone = TRUE) |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0',  
-                   #               valueRange = ifelse(\input$interval != 0 & input$method == 'sd', c(NA, NA), session$userData$y.range[[as.numeric(input$units)]])) |>
+                   #               valueRange = ifelse(\input$interval != 0 & input$method == 'sd', c(NA, NA), session$userData$y.range[[as.numeric(input$units)]])) |>  # free y-axis for sd
                    valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
-            
-            # dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
             dySeries(names(vars)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
-            dyUnzoom() |>
+        #    dyUnzoom() |>
             dyCrosshair(direction = "vertical")
+         
          
          if(show.threshold)
             graph <- dyLimit(graph, input$threshold, color = 'gray')
          
-         if(input$grab.bag)
-            graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'circle', pointSize = 5, color = '#DB5920', strokeWidth = 0)     # grab-bag points
+         
+         if(input$grab.bag) {
+            if(input$interval != 0 & input$moving.window)                                                   # if aggregation is on and smoothing,
+               graph <- dySeries(graph, names(vars)[3], color = '#DB5920', strokeWidth = 2)                 #    grab-bag as lines
+            else                                                                                            #    else, grab-bag as points
+               graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'circle', pointSize = 5, color = '#DB5920', strokeWidth = 0)     
+         }
+         
          graph
       })
       

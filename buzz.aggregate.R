@@ -40,24 +40,16 @@
    
    zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
    
-   print(period)
-   cat('data has', dim(data)[1],'rows\n')
-   
    
    dataset <- data[data$Site_Year == Site_Year &                                  # get fresh dataset
                       data$Date_Time >= period[1] & data$Date_Time <= period[2], ]
-   cat('dataset has', dim(dataset)[1],'rows\n')
-   #  print(head(dataset))
-   
-   
+
    if(interval == 0 | dim(dataset)[1] == 0)                                      # if no aggregation (or no data, thanks to recent site change), return full dataset
       return(dataset)
    
    
-   
    method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
                       'Maximum' = 'max', 'Standard deviation' = 'sd')        #, 'Percent exceedance' = 'pe')
-   
    
    fn <- switch(method,                                  # set function call                       
                 'mean' = 'mean(.x, na.rm = TRUE)',
@@ -67,30 +59,32 @@
                 'median' = 'median(.x, na.rm = TRUE)',
                 'max' = 'max(.x, na.rm = TRUE)',
                 'sd' = 'sd(.x, na.rm = TRUE)')
-            #    'pe' = 'sum(.x <= threshold, na.rm = TRUE) / sum(!is.na(.x)) * 100')
    
    halfwin <- as.period(as.duration(eval(parse(text = interval))) / 2)                    # slider wants half-windows
-   
-   cat('\ngot halfwin...\n')
+
+   vars <- c('DO', 'DO_Pct_Sat', 'Grab_DO', 'Grab_DO_Pct_Sat')
+   d <- dataset
+   d[d$source == 2, vars[1:2]] <- NA                                                      # nuke the imputed sensor data we added to make plots work
    
    if(moving.window) {                 # if moving window aggregation,
-      cat('\nits a moving window...\n')
-      
-      dataset$DO <- unlist(slide_index(dataset$DO, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
-      dataset$DO_Pct_Sat <- unlist(slide_index(dataset$DO_Pct_Sat, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
-#      dataset$Grab_DO <- unlist(slide_index(dataset$Grab_DO, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
-#     dataset$Grab_DO_Pct_Sat <- unlist(slide_index(dataset$Grab_DO_Pct_Sat, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
-      
-      xxx <<- dataset$DO
-      cat('\ndid it!\n')
-      
-      
+      for(i in vars)
+         switch(method, 
+                mean = {
+                   d[, i] <- unlist(slide_index_mean(d[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                },
+                min = {
+                   d[, i] <- unlist(slide_index_min(d[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                },
+                max = {
+                   d[, i] <- unlist(slide_index_max(d[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                },
+                {
+                   d[, i] <- unlist(slide_index(d[, i], dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+                })
    }
    else {                                    # else, aggregation summarizes
       
    }
-   cat('\nall done, dimensions of result are ')
-   print(dim(dataset))
    
-   dataset
+   d
 }

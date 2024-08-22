@@ -20,14 +20,14 @@ source('buzz.plots.R')
 source('dygraphs_plugins.R')
 
 
-unit.vars <<- c('DO', 'DO_Pct_Sat')          # these two are global, shared with subroutine and other sessions
+unit.vars <<- c('DO', 'DO_Pct_Sat')             # these two are global, shared with subroutines and other sessions
 unit.names <<- c('mg/L', '% saturation')
 
 aggreg.choices = list('None' = 0, 'Hourly' = 'hours(1)', '4 hours' = 'hours(4)', '8 hours' = 'hours(8)', '12 hours' = 'hours(12)', 
                       'Daily' = 'days(1)', 'Weekly' = 'weeks(1)', 'Bi-weekly' = 'weeks(2)', '30 days' = 'days(30)', 
                       'Entire period' = 1e9)
-method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
-                   'Maximum' = 'max', 'Standard deviation' = 'sd')          #, 'Percent exceedance' = 'pe')
+method.choices = c('Mean' = 'mean', 'Median' = 'median', 'Minimum' = 'min', 'Maximum' = 'max', '5th percentile' = 'p5', '10th percentile' = 'p10', 
+                   'Standard deviation' = 'sd')       
 
 
 # Read site, dataset, and grab bag data
@@ -48,7 +48,7 @@ ui <- page_sidebar(
    
    sidebar = 
       sidebar(
-         add_busy_spinner(spin = 'fading-circle', position = 'top-left', onstart = FALSE, timeout = 500),
+         add_busy_spinner(spin = 'fading-circle', position = 'bottom-left', onstart = FALSE, timeout = 500),
          
          card(
             selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year),
@@ -59,10 +59,6 @@ ui <- page_sidebar(
             
             numericInput('threshold', label = 'Comparison threshold', value = '',
                          min = 0, step = 1, width = '80%'),  
-            
-            #   numericInput('exceedance', label = 'Exceedance threshold (%)', value = '',         # I think we're dropping this?
-            #               min = 0, max = 100, step = 1),
-            
             
             materialSwitch('plot.threshold', label = 'Plot comparison threshold', 
                            value = FALSE),
@@ -120,7 +116,7 @@ server <- function(input, output, session) {
    disable('method')
    disable('moving.window')
    
-
+   
    session$userData$y.range <- list(c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE)),         # full range of DO data
                                     c(min(c(data$DO_Pct_Sat, data$Grab_DO_Pct_Sat), na.rm = TRUE), max(c(data$DO_Pct_Sat, data$Grab_DO_Pct_Sat), na.rm = TRUE)))
    
@@ -165,15 +161,12 @@ server <- function(input, output, session) {
    
    observeEvent(input$threshold, {                                   # --- Comparison threshold
       session$userData$keep.date.window <- TRUE
-      if(input$interval != '0')    # & input$method == 'pe')               #     if aggregation is on and we're using exceedance threshold, need to reaggregate 
-         session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
    
    
    observeEvent(input$interval, {                                    # --- Aggregation interval
-qqq <<- input$interval
-            if(input$interval == 0) {
+      if(input$interval == 0) {
          disable('method')
          disable('moving.window')
       }
