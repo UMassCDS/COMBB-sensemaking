@@ -56,7 +56,7 @@
    
    
    method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
-                      'Maximum' = 'max', 'Standard deviation' = 'sd', 'Percent exceedance' = 'pe')
+                      'Maximum' = 'max', 'Standard deviation' = 'sd')        #, 'Percent exceedance' = 'pe')
    
    
    fn <- switch(method,                                  # set function call                       
@@ -66,8 +66,8 @@
                 'p10' = 'quantile(.x, 0.10, na.rm = TRUE)',
                 'median' = 'median(.x, na.rm = TRUE)',
                 'max' = 'max(.x, na.rm = TRUE)',
-                'sd' = 'sd(.x, na.rm = TRUE)',
-                'pe' = 'sum(.x <= threshold, na.rm = TRUE) / sum(!is.na(.x)) * 100')
+                'sd' = 'sd(.x, na.rm = TRUE)')
+            #    'pe' = 'sum(.x <= threshold, na.rm = TRUE) / sum(!is.na(.x)) * 100')
    
    halfwin <- as.period(as.duration(eval(parse(text = interval))) / 2)                    # slider wants half-windows
    
@@ -77,6 +77,10 @@
       cat('\nits a moving window...\n')
       
       dataset$DO <- unlist(slide_index(dataset$DO, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+      dataset$DO_Pct_Sat <- unlist(slide_index(dataset$DO_Pct_Sat, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+#      dataset$Grab_DO <- unlist(slide_index(dataset$Grab_DO, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+#     dataset$Grab_DO_Pct_Sat <- unlist(slide_index(dataset$Grab_DO_Pct_Sat, dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+      
       xxx <<- dataset$DO
       cat('\ndid it!\n')
       

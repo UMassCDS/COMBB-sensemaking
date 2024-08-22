@@ -17,7 +17,9 @@
          graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
             dyOptions(useDataTimezone = TRUE) |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
-            dyAxis('y', gridLineColor = '#D0D0D0',  valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
+            dyAxis('y', gridLineColor = '#D0D0D0',  
+                   #               valueRange = ifelse(\input$interval != 0 & input$method == 'sd', c(NA, NA), session$userData$y.range[[as.numeric(input$units)]])) |>
+                   valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
             
             # dySeries(ifelse(input$units == 1, 'DO', 'DO_Pct_Sat'), color = '#3C2692') |>
             dySeries(names(vars)[2], color = '#3C2692') |>
@@ -39,12 +41,12 @@
          x <- lapply(x, function(v) v[!is.na(v)])                                         # remove missing
          if(length(x[[2]]) < 2)                                                           # if only 1 grab-bag point, drop it as we can't plot
             x <- x[1]
-
+         
          output$sinaplot <- renderPlot(
             if(input$dist.plot & length(x[[1]]) >= 2) {
                par(mai = c(0.75, 0, 0.25, 0))                        # margins: bottom, left, top, right (inches). Calibrated to dygraph.
                sinaplot(x, xlab = '', pch = c('.', 'o'), cex = c(1, 1), seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
-                        xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'))
+                        xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'), main = 'Distribution plot', cex.main = 1)
             }
             else
                NULL
@@ -54,8 +56,10 @@
       
       if(!session$userData$keep.date.window)
          output$table <- renderDT({                                                                         # --- data table (in 2nd tab)           
-            table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat')], 
-                               colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)'),
+            table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat', 'Temp_CondLog')], 
+                               colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)', 'Temperature (C)'), 
+                               caption = htmltools::tags$caption(
+                                  style = 'caption-side: top', HTML('<h5><b>Table of Continuous Monitoring Data</b></h5>')),
                                options = list(dom = 'ltipr')) |>
                formatDate('Date_Time', 'toLocaleString') |>
                formatRound('DO', 2) |>

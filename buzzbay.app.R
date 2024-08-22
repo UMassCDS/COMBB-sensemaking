@@ -8,6 +8,7 @@ library(bslib)
 library(dygraphs)
 library(sinaplot)
 library(DT)
+library(slider)
 library(lubridate)
 library(shinybusy)
 library(shinyWidgets)
@@ -26,7 +27,7 @@ aggreg.choices = list('None' = 0, 'Hourly' = 'hours(1)', '4 hours' = 'hours(4)',
                       'Daily' = 'days(1)', 'Weekly' = 'weeks(1)', 'Bi-weekly' = 'weeks(2)', '30 days' = 'days(30)', 
                       'Entire period' = 1e9)
 method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
-                   'Maximum' = 'max', 'Standard deviation' = 'sd', 'Percent exceedance' = 'pe')
+                   'Maximum' = 'max', 'Standard deviation' = 'sd')          #, 'Percent exceedance' = 'pe')
 
 
 # Read site, dataset, and grab bag data
@@ -57,7 +58,7 @@ ui <- page_sidebar(
             radioButtons('units', label = 'Units', choiceNames = as.list(unit.names), choiceValues = 1:2),
             
             numericInput('threshold', label = 'Comparison threshold', value = '',
-                         min = 0, step = 1),  
+                         min = 0, step = 1, width = '80%'),  
             
             #   numericInput('exceedance', label = 'Exceedance threshold (%)', value = '',         # I think we're dropping this?
             #               min = 0, max = 100, step = 1),
@@ -71,12 +72,16 @@ ui <- page_sidebar(
             materialSwitch('grab.bag', label = 'Plot grab-bag samples', 
                            value = FALSE),
             
-            selectInput('interval', label = 'Aggregation interval', choices = aggreg.choices),
+            br(),
             
-            selectInput('method', label = 'Aggregation method', choices = method.choices, 
-                        selected = 'median'),
+            span(HTML('<h5 style="display: inline-block;">Aggregation</h5>')),
             
-            materialSwitch('moving.window', label = 'Smooth data'),
+            selectInput('interval', label = 'Interval', choices = aggreg.choices),
+            
+            selectInput('method', label = 'Statistic', choices = method.choices, 
+                        selected = 'mean'),
+            
+            materialSwitch('moving.window', label = 'Smoothing'),
             
             br(),
             hr(),
@@ -90,10 +95,10 @@ ui <- page_sidebar(
       navset_pill(
          nav_panel('Plot',
                    fluidRow(
-                      column(width = 11,
+                      column(width = 10,
                              dygraphOutput('plot')
                       ),
-                      column(width = 1, 
+                      column(width = 2, 
                              plotOutput('sinaplot'))
                    )
          ),
@@ -160,7 +165,7 @@ server <- function(input, output, session) {
    
    observeEvent(input$threshold, {                                   # --- Comparison threshold
       session$userData$keep.date.window <- TRUE
-      if(input$interval != '0' & input$method == 'pe')               #     if aggregation is on and we're using exceedance threshold, need to reaggregate 
+      if(input$interval != '0')    # & input$method == 'pe')               #     if aggregation is on and we're using exceedance threshold, need to reaggregate 
          session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
