@@ -34,6 +34,7 @@
    
    library(readxl)
    library(dplyr)
+   library(lubridate)
    
    
    col.names <- list(list('Site_Year', 'Site_Year'),                            # standard col name, variants
@@ -121,6 +122,8 @@
          g <- rbind(g, x)
       }
    }
+   
+   
    colnames(sy) <- c('site', 'description', 'year', 'Site_Year')
    saveRDS(sy, 'inst/Site_Year.RDS')
    
@@ -131,8 +134,14 @@
    z$Source <- 1
    g$Source <- 2
    
-   z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + 4 * 60 * 60    # kludge up the time so dygraphs gives us times in EDT
-   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York') + 4 * 60 * 60
+   z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + hours(4)    # kludge up the time so dygraphs gives us times in EDT
+   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York') + hours(4)
+   
+   
+   
+   #z$Date_Time <- force_tz(z$Date_Time, 'America/New_York') ################################ this might work? ##############
+   
+   
    
    
    names(g)[c(3, 4)] <- paste0('Grab_', names(g)[c(3, 4)])        # rename grab-bag DO columns

@@ -22,10 +22,11 @@ source('dygraphs_plugins.R')
 unit.vars <<- c('DO', 'DO_Pct_Sat')          # these two are global, shared with subroutine and other sessions
 unit.names <<- c('mg/L', '% saturation')
 
-aggreg.choices = list('None' = 0, 'Hourly' = 1, '4 hours' = 4, '8 hours' = 8, '12 hours' = 12, 'Daily' = 24, 
-                      'Weekly' = 7 * 24, 'Bi-weekly' = 14 * 24, '30 days' = 30 & 24, 'Entire period' = 1e6)
+aggreg.choices = list('None' = 0, 'Hourly' = 'hours(1)', '4 hours' = 'hours(4)', '8 hours' = 'hours(8)', '12 hours' = 'hours(12)', 
+                      'Daily' = 'days(1)', 'Weekly' = 'weeks(1)', 'Bi-weekly' = 'weeks(2)', '30 days' = 'days(30)', 
+                      'Entire period' = 1e9)
 method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
-                   'Maximum' = 'max', 'Standard deviation' = 'sd', 'Percent exceedence' = 'pe')
+                   'Maximum' = 'max', 'Standard deviation' = 'sd', 'Percent exceedance' = 'pe')
 
 
 # Read site, dataset, and grab bag data
@@ -129,18 +130,21 @@ server <- function(input, output, session) {
       enable('period')
       session$userData$keep.date.window <- FALSE
       if(input$interval != '0')                                      #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
-         buzz.aggregate(data, input, session = getDefaultReactiveDomain())
+         session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
    
    
    observeEvent(input$period, {                                      # --- Period selected. Select site, year, and period
-      session$userData$period <- as.POSIXct(floor_date(as.POSIXct(input$period) - 4 * 60 * 60, 'days')) + 4 * 60 * 60  # round to midnight (adjusted for EDT)
+      session$userData$period <- as.POSIXct(floor_date(as.POSIXct(input$period) - hours(4), 'days')) + hours(4)   # round to midnight (adjusted for EDT)
+      
+      # ******** may be able to use floor_date? *********
+      
       session$userData$dataset <- data[data$Site_Year == input$Site_Year &
                                           data$Date_Time >= session$userData$period[1] & data$Date_Time <= session$userData$period[2], ]
       session$userData$keep.date.window <- FALSE
       if(input$interval != '0')                                      #     if aggregation is on, need to reaggregate 
-         buzz.aggregate(data, input, session = getDefaultReactiveDomain())
+         session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
    
@@ -157,13 +161,14 @@ server <- function(input, output, session) {
    observeEvent(input$threshold, {                                   # --- Comparison threshold
       session$userData$keep.date.window <- TRUE
       if(input$interval != '0' & input$method == 'pe')               #     if aggregation is on and we're using exceedance threshold, need to reaggregate 
-         buzz.aggregate(data, input, session = getDefaultReactiveDomain())
+         session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
    
    
    observeEvent(input$interval, {                                    # --- Aggregation interval
-      if(input$interval == 0) {
+qqq <<- input$interval
+            if(input$interval == 0) {
          disable('method')
          disable('moving.window')
       }
@@ -173,19 +178,19 @@ server <- function(input, output, session) {
          enable('moving.window')
       }
       session$userData$keep.date.window <- TRUE
-      buzz.aggregate(data, input, session = getDefaultReactiveDomain())
+      session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
    
    
    observeEvent(list(input$method, input$moving.window), {           # --- Aggregation method or moving window
       session$userData$keep.date.window <- TRUE
-      buzz.aggregate(data, input, session = getDefaultReactiveDomain())
+      session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
    
    
-   observeEvent(list(input$dist.plot, input$grab.bag, input$plot.threshold, input$exceedance, input$interval, input$method, input$moving.window), {
+   observeEvent(list(input$dist.plot, input$grab.bag, input$plot.threshold), {
       # --- Remaining controls that don't need to do anything but keep date window and update plot    
       session$userData$keep.date.window <- TRUE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
