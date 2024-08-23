@@ -8,6 +8,7 @@ library(bslib)
 library(dygraphs)
 library(sinaplot)
 library(DT)
+library(gt)
 library(slider)
 library(lubridate)
 library(shinybusy)
@@ -17,17 +18,18 @@ library(shinyjs)
 
 source('buzz.aggregate.R')
 source('buzz.plots.R')
+source('buzz.stats.R')
 source('dygraphs_plugins.R')
 
 
 unit.vars <<- c('DO', 'DO_Pct_Sat')             # these two are global, shared with subroutines and other sessions
 unit.names <<- c('mg/L', '% saturation')
 
-aggreg.choices = list('None' = 0, 'Hourly' = 'hours(1)', '4 hours' = 'hours(4)', '8 hours' = 'hours(8)', '12 hours' = 'hours(12)', 
-                      'Daily' = 'days(1)', 'Weekly' = 'weeks(1)', 'Bi-weekly' = 'weeks(2)', '30 days' = 'days(30)', 
-                      'Entire period' = 1e9)
-method.choices = c('Mean' = 'mean', 'Median' = 'median', 'Minimum' = 'min', 'Maximum' = 'max', '5th percentile' = 'p5', '10th percentile' = 'p10', 
-                   'Standard deviation' = 'sd')       
+
+aggreg.choices = list('None', 'Hourly', '4 hours', '8 hours', '12 hours', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly')
+
+method.choices = c('Mean' = 'mean', 'Median' = 'median', 'Minimum' = 'min', 'Maximum' = 'max', 
+                   '5th percentile' = 'p5', '10th percentile' = 'p10', 'Standard deviation' = 'sd')       
 
 
 # Read site, dataset, and grab bag data
@@ -58,7 +60,7 @@ ui <- page_sidebar(
             radioButtons('units', label = 'Units', choiceNames = as.list(unit.names), choiceValues = 1:2),
             
             numericInput('threshold', label = 'Comparison threshold', value = '',
-                         min = 0, step = 1, width = '80%'),  
+                         min = 0, step = 1),  
             
             materialSwitch('plot.threshold', label = 'Plot comparison threshold', 
                            value = FALSE),
@@ -96,7 +98,9 @@ ui <- page_sidebar(
                       ),
                       column(width = 2, 
                              plotOutput('sinaplot'))
-                   )
+                   ),
+                   br(),
+                   gt_output('stats')
          ),
          nav_panel('Table',
                    DTOutput('table'))
@@ -130,7 +134,7 @@ server <- function(input, output, session) {
                         timeFormat = '%b %e', session = getDefaultReactiveDomain())
       enable('period')
       session$userData$keep.date.window <- FALSE
-      if(input$interval != '0')                                      #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
+      if(input$interval != 'None')                                      #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
          session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
@@ -144,7 +148,7 @@ server <- function(input, output, session) {
       session$userData$dataset <- data[data$Site_Year == input$Site_Year &
                                           data$Date_Time >= session$userData$period[1] & data$Date_Time <= session$userData$period[2], ]
       session$userData$keep.date.window <- FALSE
-      if(input$interval != '0')                                      #     if aggregation is on, need to reaggregate 
+      if(input$interval != 'None')                                      #     if aggregation is on, need to reaggregate 
          session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
@@ -166,7 +170,7 @@ server <- function(input, output, session) {
    
    
    observeEvent(input$interval, {                                    # --- Aggregation interval
-      if(input$interval == 0) {
+      if(input$interval == 'None') {
          disable('method')
          disable('moving.window')
       }

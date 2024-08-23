@@ -11,18 +11,18 @@
    
    if(dim(vars)[1] > 0) {
       
-      show.threshold <- input$plot.threshold & (input$interval == 0 | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
+      show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
       
       output$plot <- renderDygraph({                                                                        # --- time series plot
          graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
             dyOptions(useDataTimezone = TRUE) |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0',  
-                   #               valueRange = ifelse(\input$interval != 0 & input$method == 'sd', c(NA, NA), session$userData$y.range[[as.numeric(input$units)]])) |>  # free y-axis for sd
+                   #               valueRange = ifelse(\input$interval != 'None' & input$method == 'sd', c(NA, NA), session$userData$y.range[[as.numeric(input$units)]])) |>  # free y-axis for sd
                    valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
             dySeries(names(vars)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
-        #    dyUnzoom() |>
+            #    dyUnzoom() |>
             dyCrosshair(direction = "vertical")
          
          
@@ -31,7 +31,7 @@
          
          
          if(input$grab.bag) {
-            if(input$interval != 0 & input$moving.window)                                                   # if aggregation is on and smoothing,
+            if(input$interval != 'None' & input$moving.window)                                                   # if aggregation is on and smoothing,
                graph <- dySeries(graph, names(vars)[3], color = '#DB5920', strokeWidth = 2)                 #    grab-bag as lines
             else                                                                                            #    else, grab-bag as points
                graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'circle', pointSize = 5, color = '#DB5920', strokeWidth = 0)     
@@ -50,7 +50,8 @@
          output$sinaplot <- renderPlot(
             if(input$dist.plot & length(x[[1]]) >= 2) {
                par(mai = c(0.75, 0, 0.25, 0))                        # margins: bottom, left, top, right (inches). Calibrated to dygraph.
-               sinaplot(x, xlab = '', pch = c('.', 'o'), cex = c(1, 1), seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
+               #   sinaplot(x, xlab = '', pch = c('.', '.'), cex = c(4, 1), seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
+               sinaplot(x, xlab = '', pch = 20, cex = 1, seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
                         xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'), main = 'Distribution plot', cex.main = 1)
             }
             else
@@ -59,16 +60,21 @@
       }
       
       
-      if(!session$userData$keep.date.window)
-         output$table <- renderDT({                                                                         # --- data table (in 2nd tab)           
-            table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat', 'Temp_CondLog')], 
-                               colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)', 'Temperature (C)'), 
-                               caption = htmltools::tags$caption(
-                                  style = 'caption-side: top', HTML('<h5><b>Table of Continuous Monitoring Data</b></h5>')),
-                               options = list(dom = 'ltipr')) |>
-               formatDate('Date_Time', 'toLocaleString') |>
-               formatRound('DO', 2) |>
-               formatRound('DO_Pct_Sat', 2)
-         })
+      output$table <- renderDT({                                                                         # --- data table (in 2nd tab)           
+         table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat', 'Temp_CondLog')], 
+                            colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)', 'Temperature (C)'), 
+                            caption = htmltools::tags$caption(
+                               style = 'caption-side: top', HTML('<h5><b>Table of Continuous Monitoring Data</b></h5>')),
+                            options = list(dom = 'ltipr')) |>
+            formatDate('Date_Time', 'toLocaleString') |>
+            formatRound('DO', 2) |>
+            formatRound('DO_Pct_Sat', 2) |>
+            formatRound('Temp_CondLog', 1)
+      })
+      
+      
+      output$stats <- render_gt({
+         buzz.stats(session$userData$dataset)
+      })
    }
 }

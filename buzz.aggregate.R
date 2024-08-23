@@ -15,43 +15,15 @@
    
    
    
-   
-   # now have full dataset, ready for aggregating
-   # we have 
-   #  input$interval          time period, nicely set with lubridate
-   #  
-   #  input$method            function
-   #     R functions          min, max, mean, median, sd (all with na.rm = TRUE)
-   #     percentiles          quantile(x, 0.05, na.rm = TRUE), quantile(x, 0.1, na.rm = TRUE)
-   #     percent exceedance   sum(x <= input$threshold, na.rm = TRUE) / sum(!is.na(x)) * 100
-   #     
-   #     include functions like this: ~eval(parse(text = fn))
-   #     
-   #  input$moving.window     moving window or summarizing
-   #     for moving window, we're taking an idiosyncratic subsample to display (regularize this?)
-   #     
-   #     moving window: slide_index(x, dates, function, .before = , after = )
-   #     non-window: slide_period(
-   #     
-   #     all functions are _dbl. Probably don't need to include it, as data are already dbl
-   #     it looks like I can apply it to data frames, so maybe can hit all 4 values at once?
-   #     better to use built-in functions...... 
-   
-   
-   zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
-   
-   
-   dataset <- data[data$Site_Year == Site_Year &                                  # get fresh dataset
+ #  zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
+ 
+   dataset <- data[data$Site_Year == Site_Year &                                    # get fresh dataset
                       data$Date_Time >= period[1] & data$Date_Time <= period[2], ]
-
-   if(interval == 0 | dim(dataset)[1] == 0)                                      # if no aggregation (or no data, thanks to recent site change), return full dataset
+   
+   if(interval == 'None' | dim(dataset)[1] == 0)                                    # if no aggregation (or no data, thanks to recent site change), return full dataset
       return(dataset)
    
-   
-   method.choices = c('Mean' = 'mean', 'Minimum' = 'min', '5th percentile' = 'p5', '10th percentile' = 'p10', 'Median' = 'median', 
-                      'Maximum' = 'max', 'Standard deviation' = 'sd')        #, 'Percent exceedance' = 'pe')
-   
-   fn <- switch(method,                                  # set function call                       
+   fn <- switch(method,                                                             # get function call from method                     
                 'mean' = 'mean(.x, na.rm = TRUE)',
                 'min' = 'min(.x, na.rm = TRUE)',
                 'p5' = 'quantile(.x, 0.05, na.rm = TRUE)',
@@ -60,31 +32,49 @@
                 'max' = 'max(.x, na.rm = TRUE)',
                 'sd' = 'sd(.x, na.rm = TRUE)')
    
-   halfwin <- as.period(as.duration(eval(parse(text = interval))) / 2)                    # slider wants half-windows
-
-   vars <- c('DO', 'DO_Pct_Sat', 'Grab_DO', 'Grab_DO_Pct_Sat')
-   d <- dataset
-   d[d$source == 2, vars[1:2]] <- NA                                                      # nuke the imputed sensor data we added to make plots work
    
-   if(moving.window) {                 # if moving window aggregation,
+   intervals <- switch(interval,                                                    # get 2 ways of defining interval from interval (thanks, annoyingly inconsistent slider!) 
+                       'Hourly' = list(hours(1), 'hour', 1),
+                       '4 hours' = list(hours(4), 'hour', 4),
+                       '8 hours' = list(hours(8), 'hour', 8),
+                       '12 hours' = list(hours(12), 'hour', 12),
+                       'Daily' = list(days(1), 'day', 1),
+                       'Weekly' = list(weeks(1), 'week', 1),
+                       'Bi-weekly' = list(weeks(2), 'week', 2),
+                       'Monthly' = list(months(1), 'month', 1)
+   )
+   
+   halfwin <- as.period(as.duration(intervals[[1]]) / 2)                            # split out all of the (still annoying) interval parameters
+   per <- intervals[[2]]
+   every <- intervals[[3]]
+   
+   vars <- c('DO', 'DO_Pct_Sat', 'Temp_CondLog', 'Grab_DO', 'Grab_DO_Pct_Sat')
+   dataset[dataset$source == 2, vars[1:2]] <- NA                                    # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
+   
+   if(moving.window) {                                                              # if moving window aggregation,
       for(i in vars)
-         switch(method, 
+         switch(method,
                 mean = {
-                   d[, i] <- unlist(slide_index_mean(d[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                   dataset[, i] <- unlist(slide_index_mean(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
                 },
                 min = {
-                   d[, i] <- unlist(slide_index_min(d[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                   dataset[, i] <- unlist(slide_index_min(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
                 },
                 max = {
-                   d[, i] <- unlist(slide_index_max(d[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                   dataset[, i] <- unlist(slide_index_max(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
                 },
                 {
-                   d[, i] <- unlist(slide_index(d[, i], dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+                   dataset[, i] <- unlist(slide_index(dataset[, i], dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
                 })
    }
-   else {                                    # else, aggregation summarizes
-      
+   else {                                                                           # else, aggregation summarizes
+      d <- data.frame(Date_Time = as.POSIXct(unlist(slide_period(dataset$Date_Time, dataset$Date_Time, ~mean(.x), .period = per, .every = every)), tz = 'America/New_York'))         # get mean date         ********* make sure time zone is right
+      d$Site_Year <- dataset$Site_Year[1]
+      d$Source <- 1                                                        ########################### .............................. ******************* not sure what to do with this
+      for(i in vars)
+         d[, i] <- unlist(slide_period(dataset[, i], dataset$Date_Time, .f = ~eval(parse(text = fn)), .period = per, .every = every))
+      dataset <- d
    }
    
-   d
+   dataset
 }
