@@ -16,7 +16,9 @@
    
    
  #  zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
- 
+ #  x <- buzz.aggregate(data = zzz[[1]], Site_Year = zzz[[2]], period = zzz[[3]], interval = zzz[[4]], method = zzz[[5]], moving.window = zzz[[6]], threshold = zzz[[7]])
+   
+   
    dataset <- data[data$Site_Year == Site_Year &                                    # get fresh dataset
                       data$Date_Time >= period[1] & data$Date_Time <= period[2], ]
    

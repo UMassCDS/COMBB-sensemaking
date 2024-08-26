@@ -74,7 +74,7 @@
       
       
       output$stats <- render_gt({
-         buzz.stats(session$userData$dataset)
+         buzz.stats(session$userData$dataset, input$threshold, input$units)
       })
    }
 }
