@@ -43,7 +43,8 @@
                        'Daily' = list(days(1), 'day', 1),
                        'Weekly' = list(weeks(1), 'week', 1),
                        'Bi-weekly' = list(weeks(2), 'week', 2),
-                       'Monthly' = list(months(1), 'month', 1)
+                       'Monthly' = list(months(1), 'month', 1),
+                       'Entire period' = list(years(1), 'year', 1)
    )
    
    halfwin <- as.period(as.duration(intervals[[1]]) / 2)                            # split out all of the (still annoying) interval parameters

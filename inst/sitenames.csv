@@ -1,6 +1,6 @@
 site,latitude,longitude,description,include,years
 E33,41.54363,-71.05974,Westport River East Branch Buoy,FALSE,
-SR4,41.538091,-70.977211,Slocums River Outer,TRUE,"2021, 2022"
+SR4,41.538091,-70.977211,Slocums River Outer,TRUE,2022
 OB1,41.740892,-70.659368,Onset Bay Inner,FALSE,
 OB2,41.738223,-70.64778,Onset Bay Outer,FALSE,
 OB3A,41.734777,-70.665905,Onset Bay Inner,FALSE,

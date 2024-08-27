@@ -27,13 +27,14 @@ unit.vars <<- c('DO', 'DO_Pct_Sat')             # these two are global, shared w
 unit.names <<- c('mg/L', '% saturation')
 
 
-aggreg.choices = list('None', 'Hourly', '4 hours', '8 hours', '12 hours', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly')
+aggreg.choices = list('None', 'Hourly', '4 hours', '8 hours', '12 hours', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 
+                      'Entire period')
 
 method.choices = c('Mean' = 'mean', 'Median' = 'median', 'Minimum' = 'min', 'Maximum' = 'max', 
                    '5th percentile' = 'p5', '10th percentile' = 'p10', 'Standard deviation' = 'sd')       
 
 
-# Read site, dataset, and grab bag data
+# Read site, dataset, and grab sample data
 sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
@@ -68,7 +69,7 @@ ui <- page_sidebar(
             
             materialSwitch('dist.plot', label = 'Show distribution plot', value = FALSE),
             
-            materialSwitch('grab.bag', label = 'Plot grab-bag samples', 
+            materialSwitch('grab', label = 'Plot grab sample data', 
                            value = FALSE),
             
             br(),
@@ -135,7 +136,8 @@ server <- function(input, output, session) {
                         timeFormat = '%b %e', session = getDefaultReactiveDomain())
       enable('period')
       session$userData$keep.date.window <- FALSE
-      if(input$interval != 'None')                                      #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
+      session$userData$redraw.stats <- TRUE
+      if(input$interval != 'None')                                   #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
          session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
@@ -149,25 +151,35 @@ server <- function(input, output, session) {
       session$userData$dataset <- data[data$Site_Year == input$Site_Year &
                                           data$Date_Time >= session$userData$period[1] & data$Date_Time <= session$userData$period[2], ]
       session$userData$keep.date.window <- FALSE
-      if(input$interval != 'None')                                      #     if aggregation is on, need to reaggregate 
+      session$userData$redraw.stats <- TRUE
+      if(input$interval != 'None')                                   #     if aggregation is on, need to reaggregate 
          session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
    
    
-   observeEvent(input$units, {                                       # --- Units changed, so keep date window
+   observeEvent(input$units, {                                       # --- Units changed
       freezeReactiveValue(input,'threshold')
       updateNumericInput('threshold', label = paste0('Comparison threshold ',  ifelse(input$units == 1, '(mg/L)', '(% saturation)')), 
                          value = ifelse(input$units == 1, 5, 75), session = getDefaultReactiveDomain())
       session$userData$keep.date.window <- TRUE
+      session$userData$redraw.stats <- TRUE                          #    we really want FALSE here, but we're triggering the CT input
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
    
    
    observeEvent(input$threshold, {                                   # --- Comparison threshold
       session$userData$keep.date.window <- TRUE
+      session$userData$redraw.stats <- TRUE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
+   
+   
+   observeEvent(input$grab, {                                        # --- Plot grab samples    
+      session$userData$keep.date.window <- TRUE
+      session$userData$redraw.stats <- TRUE
+      buzz.plots(input, output, session = getDefaultReactiveDomain())
+   })
    
    
    observeEvent(input$interval, {                                    # --- Aggregation interval
@@ -181,6 +193,7 @@ server <- function(input, output, session) {
          enable('moving.window')
       }
       session$userData$keep.date.window <- TRUE
+      session$userData$redraw.stats <- TRUE
       session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
@@ -188,14 +201,16 @@ server <- function(input, output, session) {
    
    observeEvent(list(input$method, input$moving.window), {           # --- Aggregation method or moving window
       session$userData$keep.date.window <- TRUE
+      session$userData$redraw.stats <- TRUE
       session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    }, ignoreInit = TRUE)
    
    
-   observeEvent(list(input$dist.plot, input$grab.bag, input$plot.threshold), {
+   observeEvent(list(input$dist.plot, input$plot.threshold), {
       # --- Remaining controls that don't need to do anything but keep date window and update plot    
       session$userData$keep.date.window <- TRUE
+      session$userData$redraw.stats <- FALSE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
 }   

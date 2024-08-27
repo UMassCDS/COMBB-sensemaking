@@ -1,4 +1,4 @@
-'buzz.stats' <- function(dataset, threshold, units) {
+'buzz.stats' <- function(dataset, threshold, units, grab) {
    
    # Statistic <- c('Number of Data Points/Aggregated Metrics in Time Period', 'Minimum Value', 'Maximum Value', 'Mean Value', 'Standard Deviation',
    #                'Number of Data Points/Aggregated Metrics Below Comparison Threshold', 'Percent of Data Points/Aggregated Metrics Below Comparison Threshold', 
@@ -39,8 +39,6 @@
    sense.units <- dataset[, unit.vars[as.integer(units)]]                                                         # units to use for exceedance
    sense.exceed <- sense.units < threshold                                                                        # cases below comparison threshold
    
-   grab.units <- dataset[, paste0('Grab_', unit.vars[as.integer(units)])]
-   grab.exceed <- grab.units < threshold
    
    
    # Calculate sensor stats
@@ -55,42 +53,64 @@
    if(any(sense.exceed, na.rm = TRUE)) {                                                                          # if we're below CT,
       Sensor[8] <- format(round(mean(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1)                    #    mean below CT
       Sensor[9] <- ifelse(sum(sense.exceed, na.rm = TRUE) == 1, '',                                               #    standard deviation below CT (only if n > 1)
-                        format(round(sd(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1))                  
+                          format(round(sd(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1))                  
       
+      # sense.exceed <<- sense.exceed; dataset<<-dataset
+      # se <- sense.exceed
+      # se[is.na(se)] <- FALSE
+      # se<<-se
+      # g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                       # make grouping variable of runs of TRUEs
+      # d <- cbind(aggregate(dataset$Date_Time, by = list(g), FUN = 'max'),
+      #            aggregate(dataset$Date_Time, by = list(g), FUN = 'min'))                                         # deltas in sec
+      # m <- as.numeric(d[d != 0] / 60)                                                                 # periods of low DO in minutes (zeros dropped)
+      # print(m)
+      # Sensor[10] <- min(m)                                                                                        # min, max, and mean minutes below CT threshold
+      # Sensor[11] <- max(m)
+      # Sensor[12] <- mean(m)
    }
    
-   # Calculate grab-bag stats
-   Grab[1] <- format(sum(!is.na(dataset$Grab_DO)), big.mark = ',')                                                # sample size
-   Grab[2] <- fmt.stats(min(dataset$Grab_DO, na.rm = TRUE), min(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # min
-   Grab[3] <- fmt.stats(max(dataset$Grab_DO, na.rm = TRUE), max(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # max
-   Grab[4] <- fmt.stats(mean(dataset$Grab_DO, na.rm = TRUE), mean(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))         # mean
-   Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE), sd(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))             # sd
    
-   Grab[6] <- format(sum(grab.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
-   Grab[7] <- paste0(round(sum(grab.exceed, na.rm = TRUE) / sum(!is.na(grab.exceed)) * 100, 0), '%')              # % below CT
-   if(any(grab.exceed, na.rm = TRUE)) {                                                                           # if we're below CT,
-      Grab[8] <- format(round(mean(grab.units[grab.exceed], na.rm = TRUE), 1), nsmall = 1)                        #    mean below CT
-      Grab[9] <- ifelse(sum(grab.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
-                        format(round(sd(grab.units[grab.exceed], na.rm = TRUE), 1), nsmall = 1))                  
+   # Calculate grab sample stats (if selected)
+   if(grab) {                          
+      grab.units <- dataset[, paste0('Grab_', unit.vars[as.integer(units)])]
+      grab.exceed <- grab.units < threshold
+      
+      Grab[1] <- format(sum(!is.na(dataset$Grab_DO)), big.mark = ',')                                                # sample size
+      Grab[2] <- fmt.stats(min(dataset$Grab_DO, na.rm = TRUE), min(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # min
+      Grab[3] <- fmt.stats(max(dataset$Grab_DO, na.rm = TRUE), max(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # max
+      Grab[4] <- fmt.stats(mean(dataset$Grab_DO, na.rm = TRUE), mean(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))         # mean
+      Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE), sd(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))             # sd
+      
+      Grab[6] <- format(sum(grab.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
+      Grab[7] <- paste0(round(sum(grab.exceed, na.rm = TRUE) / sum(!is.na(grab.exceed)) * 100, 0), '%')              # % below CT
+      if(any(grab.exceed, na.rm = TRUE)) {                                                                           # if we're below CT,
+         Grab[8] <- format(round(mean(grab.units[grab.exceed], na.rm = TRUE), 1), nsmall = 1)                        #    mean below CT
+         Grab[9] <- ifelse(sum(grab.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
+                           format(round(sd(grab.units[grab.exceed], na.rm = TRUE), 1), nsmall = 1))                  
+      }
+      Grab[10:12] <- 'N/A'                                                                                           # no durations below CT for grab-bag
    }
-   Grab[10:12] <- 'N/A'                                                                                           # no durations below CT for grab-bag
    
-   group <- c(rep('All aggregated datapoints', 5), rep('Low DO events', 7))
+   group <- c(rep('All aggregated datapoints', 5), rep('DO events below Comparison Threshold (CT)', 7))
    
-   stats <- data.frame(group, Statistic, Unit, Sensor, Grab)
+   stats <- data.frame(group, Statistic, Unit, Sensor)
+   if(grab)
+      stats$Grab <- Grab
    stats <- group_by(stats, group)
    
-   gt(stats) |>
-      # tab_header(title = 'Summary Data Shown in the Plot Above') |>
-      cols_label(Grab = 'Grab-bag') |>
-      #    tab_row_group(label = 'Low DO events', rows = 6:12) |>            # row labels in group
-      #    tab_row_group(label = 'All aggregated datapoints', rows = 1:5) |>
+   st <- gt(stats) |>
+      tab_header(title = 'Summary statistics for chosen Time Period') |>
       cols_width(group ~ px(100)) |>
       tab_options(row_group.as_column = TRUE) |>
       cols_align('center', columns = c('group', 'Unit')) |>
-      cols_align('right', columns = c('Sensor', 'Grab')) |>
-      
-      data_color(columns = 'Sensor', palette = '#BCB2FF', apply_to = 'fill') |>
-      data_color(columns = 'Grab', palette = '#FDC17B', apply_to = 'fill') 
+      cols_align('right', columns = c('Sensor')) |>
+      data_color(columns = 'Sensor', palette = '#BCB2FF', apply_to = 'fill')
    
+   if(grab) {
+      st <- cols_label(st, Grab = 'Grab samples') |>
+         cols_align('right', columns = 'Grab') |>
+         data_color(columns = 'Grab', palette = '#FDC17B', apply_to = 'fill')
+   }
+   
+   st
 }

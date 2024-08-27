@@ -7,44 +7,46 @@
    
    
    
-   vars <- session$userData$dataset[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab.bag + 1)], unit.vars[as.integer(input$units)]))]
+   vars <- session$userData$dataset[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab + 1)], unit.vars[as.integer(input$units)]))]
    
    if(dim(vars)[1] > 0) {
       
       show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
+      plot.data <- vars
+      names(plot.data)[2] <- 'Sensor DO'
+      if(input$grab)
+         names(plot.data)[3] <- 'Grab sample DO'
       
-      output$plot <- renderDygraph({                                                                        # --- time series plot
-         graph <- dygraph(vars, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
+      output$plot <- renderDygraph({                                                      # --- time series plot
+         graph <- dygraph(plot.data, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
             dyOptions(useDataTimezone = TRUE) |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
-            dyAxis('y', gridLineColor = '#D0D0D0',  
-                   #               valueRange = ifelse(\input$interval != 'None' & input$method == 'sd', c(NA, NA), session$userData$y.range[[as.numeric(input$units)]])) |>  # free y-axis for sd
-                   valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
-            dySeries(names(vars)[2], color = '#3C2692') |>
+            dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
+            dySeries(names(plot.data)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             #    dyUnzoom() |>
             dyCrosshair(direction = "vertical")
          
          
          if(show.threshold)
-            graph <- dyLimit(graph, input$threshold, color = 'gray')
+            graph <- dyLimit(graph, input$threshold, color = 'green')
          
          
-         if(input$grab.bag) {
-            if(input$interval != 'None' & input$moving.window)                                                   # if aggregation is on and smoothing,
-               graph <- dySeries(graph, names(vars)[3], color = '#DB5920', strokeWidth = 2)                 #    grab-bag as lines
-            else                                                                                            #    else, grab-bag as points
-               graph <- dySeries(graph, names(vars)[3], drawPoints = TRUE, pointShape = 'circle', pointSize = 5, color = '#DB5920', strokeWidth = 0)     
+         if(input$grab) {
+            if(input$interval != 'None' & input$moving.window)                                              # if aggregation is on and smoothing,
+               graph <- dySeries(graph, names(plot.data)[3], color = '#DB5920', strokeWidth = 2)            #    grab samples as lines
+            else                                                                                            #    else, grab samples as points
+               graph <- dySeries(graph, names(plot.data)[3], drawPoints = TRUE, pointSize = 3, color = '#DB5920', strokeWidth = 0)     
          }
          
          graph
       })
       
       
-      if(input$dist.plot) {                                                                                 # --- distribution plot, if selected and > 2 points
-         x <- list(vars[session$userData$dataset$Source == 1, 2], vars[, c(-1, -2)])      # response variables (sensors and maybe grab-bag) as list; drop imputed sensor data
+      if(input$dist.plot) {                                                               # --- distribution plot, if selected and > 2 points
+         x <- list(vars[session$userData$dataset$Source == 1, 2], vars[, c(-1, -2)])      # response variables (sensors and maybe grab samples) as list; drop imputed sensor data
          x <- lapply(x, function(v) v[!is.na(v)])                                         # remove missing
-         if(length(x[[2]]) < 2)                                                           # if only 1 grab-bag point, drop it as we can't plot
+         if(length(x[[2]]) < 2)                                                           # if only 1 grab samples point, drop it as we can't plot
             x <- x[1]
          
          output$sinaplot <- renderPlot(
@@ -59,7 +61,7 @@
       }
       
       
-      output$table <- renderDT({                                                                         # --- data table (in 2nd tab)           
+      output$table <- renderDT({                                                          # --- data table (in 2nd tab)           
          table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat', 'Temp_CondLog')], 
                             colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)', 'Temperature (C)'), 
                             caption = htmltools::tags$caption(
@@ -71,9 +73,9 @@
             formatRound('Temp_CondLog', 1)
       })
       
-      
-      output$stats <- render_gt({
-         buzz.stats(session$userData$dataset, input$threshold, input$units)
-      })
+      if(session$userData$redraw.stats)                                                   # --- summary stats table
+         output$stats <- render_gt({
+            buzz.stats(session$userData$dataset, input$threshold, input$units, input$grab)
+         })
    }
 }
