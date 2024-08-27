@@ -1,23 +1,14 @@
 'buzz.stats' <- function(dataset, threshold, units, grab) {
    
-   # Statistic <- c('Number of Data Points/Aggregated Metrics in Time Period', 'Minimum Value', 'Maximum Value', 'Mean Value', 'Standard Deviation',
-   #                'Number of Data Points/Aggregated Metrics Below Comparison Threshold', 'Percent of Data Points/Aggregated Metrics Below Comparison Threshold', 
-   #                'Mean Value of Data/Aggregated Metrics Below Comparison Threshold', 'Standard Deviation of Data/Aggregated Metrics Below Comparison Threshold', 
-   #                'Shortest Duration Below Comparison Threshold', 'Longest Duration Below Comparison Threshold', 'Mean Time Below Comparison Threshold')
-   
-   # Statistic <- c('Number of points', 'Minimum', 'Maximum', 'Mean', 'Standard deviation',
-   #                'Number of points below Comparison Threshold', 
-   #                'Percent of points below Comparison Threshold', 
-   #                'Mean below Comparison Threshold', 
-   #                'Standard deviation below Comparison Threshold', 
-   #                'Shortest duration below Comparison Threshold', 
-   #                'Longest duration below Comparison Threshold', 
-   #                'Mean time below Comparison Threshold')
-   
    xxx <<- dataset; xxthreshold <<- threshold; xxunits <<- units
    
    'fmt.stats' <- function(x, y)                                                          # format moment stats
       paste0(format(round(x, 1), nsmall = 1), ' (', round(y, 0), '%)')
+   
+   'fmt.hm' <- function(x) {                                                                # format minutes as h:mm
+      x <- round(x, 0)
+      paste(floor(x / 60), sprintf('%02d', x - floor(x / 60) * 60), sep = ':')
+   }
    
    
    Statistic <- c('Number of points', 'Minimum', 'Maximum', 'Mean', 'Standard deviation',
@@ -29,16 +20,11 @@
                   'Longest duration below CT', 
                   'Mean time below CT')
    
-   
-   
-   #Unit <- c('count', rep('mg/L (% saturation)', 4), 'count', '%', rep('mg/L (% saturation)', 2), rep('minutes', 3))
-   Unit <- c('count', rep('mg/L (% sat.)', 4), 'count', '%', rep('mg/L (% sat.)', 2), rep('minutes', 3))
-   
+   Unit <- c('count', rep('mg/L (% sat.)', 4), 'count', '%', rep('mg/L (% sat.)', 2), rep('hours:mins', 3))
    Sensor <- Grab <- rep('', 12)
    
    sense.units <- dataset[, unit.vars[as.integer(units)]]                                                         # units to use for exceedance
    sense.exceed <- sense.units < threshold                                                                        # cases below comparison threshold
-   
    
    
    # Calculate sensor stats
@@ -55,18 +41,23 @@
       Sensor[9] <- ifelse(sum(sense.exceed, na.rm = TRUE) == 1, '',                                               #    standard deviation below CT (only if n > 1)
                           format(round(sd(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1))                  
       
-      # sense.exceed <<- sense.exceed; dataset<<-dataset
-      # se <- sense.exceed
-      # se[is.na(se)] <- FALSE
-      # se<<-se
-      # g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                       # make grouping variable of runs of TRUEs
-      # d <- cbind(aggregate(dataset$Date_Time, by = list(g), FUN = 'max'),
-      #            aggregate(dataset$Date_Time, by = list(g), FUN = 'min'))                                         # deltas in sec
-      # m <- as.numeric(d[d != 0] / 60)                                                                 # periods of low DO in minutes (zeros dropped)
-      # print(m)
-      # Sensor[10] <- min(m)                                                                                        # min, max, and mean minutes below CT threshold
-      # Sensor[11] <- max(m)
-      # Sensor[12] <- mean(m)
+      se <- sense.exceed
+      se[is.na(se)] <- FALSE                                                                                      # treat missing values as NOT below CT
+      
+      ##     sense.exceed <<- sense.exceed; dataset<<-dataset; se<<-se
+      
+      g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                                                           # make grouping variable of runs of TRUEs
+      for(i in length(g):2)                                                                                       # extend each group to the next sample so we get proper periods
+         if(g[i] == 0)
+            g[i] <- g[i - 1]
+      d <- cbind(aggregate(dataset$Date_Time, by = list(g), FUN = 'max'), 
+                 aggregate(dataset$Date_Time, by = list(g), FUN = 'min'))                                         # deltas in sec
+      d <- d[d$Group.1 != 0,]                                                                                     # drop group 0
+      m <- as.numeric(as.duration(d[, 2] - d[, 4])) / 60                                                          # duration below threshold in minutes
+      
+      Sensor[10] <- fmt.hm(min(m))                                                                                # min, max, and mean minutes below CT threshold
+      Sensor[11] <- fmt.hm(max(m))
+      Sensor[12] <- fmt.hm(mean(m))
    }
    
    
