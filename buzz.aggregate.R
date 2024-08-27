@@ -15,8 +15,8 @@
    
    
    
- #  zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
- #  x <- buzz.aggregate(data = zzz[[1]], Site_Year = zzz[[2]], period = zzz[[3]], interval = zzz[[4]], method = zzz[[5]], moving.window = zzz[[6]], threshold = zzz[[7]])
+   #  zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
+   #  x <- buzz.aggregate(data = zzz[[1]], Site_Year = zzz[[2]], period = zzz[[3]], interval = zzz[[4]], method = zzz[[5]], moving.window = zzz[[6]], threshold = zzz[[7]])
    
    
    dataset <- data[data$Site_Year == Site_Year &                                    # get fresh dataset
@@ -25,13 +25,13 @@
    if(interval == 'None' | dim(dataset)[1] == 0)                                    # if no aggregation (or no data, thanks to recent site change), return full dataset
       return(dataset)
    
-   fn <- switch(method,                                                             # get function call from method                     
+   fn <- switch(method,                                                             # get function call from method (smoothing uses built-in mean, min, max)                    
                 'mean' = 'mean(.x, na.rm = TRUE)',
-                'min' = 'min(.x, na.rm = TRUE)',
+                'min' = 'suppressWarnings(min(.x, na.rm = TRUE))',
+                'max' = 'suppressWarnings(max(.x, na.rm = TRUE))',
+                'median' = 'median(.x, na.rm = TRUE)',
                 'p5' = 'quantile(.x, 0.05, na.rm = TRUE)',
                 'p10' = 'quantile(.x, 0.10, na.rm = TRUE)',
-                'median' = 'median(.x, na.rm = TRUE)',
-                'max' = 'max(.x, na.rm = TRUE)',
                 'sd' = 'sd(.x, na.rm = TRUE)')
    
    
@@ -60,10 +60,12 @@
                    dataset[, i] <- unlist(slide_index_mean(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
                 },
                 min = {
-                   dataset[, i] <- unlist(slide_index_min(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                   dataset[, i] <- unlist(suppressWarnings(slide_index_min(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin)))
+                   dataset[dataset[, i] == Inf, i] <- NA
                 },
                 max = {
-                   dataset[, i] <- unlist(slide_index_max(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+                   dataset[, i] <- unlist(suppressWarnings(slide_index_max(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin)))
+                   dataset[dataset[, i] == -Inf, i] <- NA
                 },
                 {
                    dataset[, i] <- unlist(slide_index(dataset[, i], dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
@@ -73,8 +75,10 @@
       d <- data.frame(Date_Time = as.POSIXct(unlist(slide_period(dataset$Date_Time, dataset$Date_Time, ~mean(.x), .period = per, .every = every)), tz = 'America/New_York'))         # get mean date         ********* make sure time zone is right
       d$Site_Year <- dataset$Site_Year[1]
       d$Source <- 1                                                        ########################### .............................. ******************* not sure what to do with this
-      for(i in vars)
+      for(i in vars) {
          d[, i] <- unlist(slide_period(dataset[, i], dataset$Date_Time, .f = ~eval(parse(text = fn)), .period = per, .every = every))
+         d[d[, i] %in% c(-Inf, Inf), i] <- NA                                       # so min and max don't cause trouble
+      }
       dataset <- d
    }
    

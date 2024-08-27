@@ -50,7 +50,6 @@
          output$sinaplot <- renderPlot(
             if(input$dist.plot & length(x[[1]]) >= 2) {
                par(mai = c(0.75, 0, 0.25, 0))                        # margins: bottom, left, top, right (inches). Calibrated to dygraph.
-               #   sinaplot(x, xlab = '', pch = c('.', '.'), cex = c(4, 1), seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
                sinaplot(x, xlab = '', pch = 20, cex = 1, seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
                         xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'), main = 'Distribution plot', cex.main = 1)
             }
