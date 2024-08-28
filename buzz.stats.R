@@ -33,11 +33,8 @@
    
    
    
-   sense.data <- dataset[dataset$Source == 1,]
-   grab.data <- dataset[dataset$Source == 2,]
-   
-
    # Calculate sensor stats
+   sense.data <- dataset[dataset$Source == 1,]
    sense.units <- sense.data[, unit.vars[as.integer(units)]]                                                         # units to use for exceedance
    sense.exceed <- sense.units < threshold                                                                           # cases below comparison threshold
    
@@ -81,14 +78,14 @@
    
    # Calculate grab sample stats (if selected)
    if(grab) {                          
-      grab.units <- grab.data[, paste0('Grab_', unit.vars[as.integer(units)])]
+      grab.units <- dataset[, paste0('Grab_', unit.vars[as.integer(units)])]
       grab.exceed <- grab.units < threshold
       
-      Grab[1] <- format(sum(!is.na(grab.data$Grab_DO)), big.mark = ',')                                              # sample size
-      Grab[2] <- fmt.stats(min(grab.data$Grab_DO, na.rm = TRUE), min(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))       # min
-      Grab[3] <- fmt.stats(max(grab.data$Grab_DO, na.rm = TRUE), max(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))       # max
-      Grab[4] <- fmt.stats(mean(grab.data$Grab_DO, na.rm = TRUE), mean(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))     # mean
-      Grab[5] <- fmt.stats(sd(grab.data$Grab_DO, na.rm = TRUE), sd(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))         # sd
+      Grab[1] <- format(sum(!is.na(dataset$Grab_DO)), big.mark = ',')                                                # sample size
+      Grab[2] <- fmt.stats(min(dataset$Grab_DO, na.rm = TRUE), min(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # min
+      Grab[3] <- fmt.stats(max(dataset$Grab_DO, na.rm = TRUE), max(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # max
+      Grab[4] <- fmt.stats(mean(dataset$Grab_DO, na.rm = TRUE), mean(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))         # mean
+      Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE), sd(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))             # sd
       
       Grab[6] <- format(sum(grab.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
       Grab[7] <- paste0(round(sum(grab.exceed, na.rm = TRUE) / sum(!is.na(grab.exceed)) * 100, 0), '%')              # % below CT

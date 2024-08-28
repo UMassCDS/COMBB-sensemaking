@@ -110,8 +110,8 @@
          
          x$Date_Time <- paste(unlist(lapply(x$SAMP_DATE, substr, 1, 10)), unlist(lapply(x$TIME, substr, 12, 99))) #       combine date and time
          
-         x <- x[,c('Site_Year', 'Date_Time', 'DO_MGL', 'DO_SAT')] #       pull columns in correct order (we're omitting temperature)
-         names(x) <- unlist(lapply(col.names, `[[`, 1))[-5]       #       and apply standard names
+         x <- x[,c('Site_Year', 'Date_Time', 'DO_MGL', 'DO_SAT', 'TEMP_C')] #       pull columns in correct order
+         names(x) <- unlist(lapply(col.names, `[[`, 1))       #       and apply standard names
          
          suppressWarnings(x$DO <- as.numeric(x$DO))               #       these come in as character
          x$DO_Pct_Sat <- x$DO_Pct_Sat * 100                       #       remove annoying % from DO_Pct_Sat (it gets interpreted as proportion, not percent)
@@ -138,10 +138,8 @@
    g$Source <- 2
    
    z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + hours(4)    # kludge up the time so dygraphs gives us times in EDT
-   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York') + hours(4)
-   
-   
-   
+   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
+
    #z$Date_Time <- force_tz(z$Date_Time, 'America/New_York') ################################ this might work? ##############
    
    

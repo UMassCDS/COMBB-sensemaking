@@ -60,18 +60,15 @@
          )
       }
       
-
-      output$table <- renderDT({                                                          # --- data table (in 2nd tab)           
-         table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat', 'Temp_CondLog')], 
-                            colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)', 'Temperature (C)'), 
-                            caption = htmltools::tags$caption(
-                               style = 'caption-side: top', HTML('<h5><b>Table of Continuous Monitoring Data</b></h5>')),
-                            options = list(dom = 'ltipr')) |>
-            formatDate('Date_Time', 'toLocaleString') |>
-            formatRound('DO', 2) |>
-            formatRound('DO_Pct_Sat', 2) |>
-            formatRound('Temp_CondLog', 1)
+      
+      output$sensor.table <- renderDT({                                                   # --- sensor data table (in 2nd tab)           
+         buzz.table(session$userData$dataset[session$userData$dataset$Source == 1, ], 'Continuous Monitoring Data')
       })
+      
+      output$grab.table <- renderDT({                                                     # --- grab sample data table (in 3nd tab)           
+         buzz.table(session$userData$dataset[!is.na(session$userData$dataset$Grab_DO) | !is.na(session$userData$dataset$Grab_DO_Pct_Sat), ], 'Grab Sample Monitoring Data')
+      })
+      
       
       if(session$userData$redraw.stats)                                                   # --- summary stats table
          output$stats <- render_gt({

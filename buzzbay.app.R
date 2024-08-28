@@ -19,6 +19,7 @@ library(shinyjs)
 
 source('buzz.aggregate.R')
 source('buzz.plots.R')
+source('buzz.table.R')
 source('buzz.stats.R')
 source('dygraphs_plugins.R')
 
@@ -81,7 +82,7 @@ ui <- page_sidebar(
             selectInput('method', label = 'Statistic', choices = method.choices, 
                         selected = 'mean'),
             
-            materialSwitch('moving.window', label = 'Smoothing'),
+            materialSwitch('moving.window', label = 'Moving window'),
             
             br(),
             hr(),
@@ -104,8 +105,10 @@ ui <- page_sidebar(
                    br(),
                    gt_output('stats')
          ),
-         nav_panel('Table',
-                   DTOutput('table'))
+         nav_panel('Sensor table',
+                   DTOutput('sensor.table')),
+         nav_panel('Grab sample table',
+                   DTOutput('grab.table'))
       )
    )
 )
