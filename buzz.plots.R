@@ -60,7 +60,7 @@
          )
       }
       
-      
+
       output$table <- renderDT({                                                          # --- data table (in 2nd tab)           
          table <- datatable(session$userData$dataset[session$userData$dataset$Source == 1, c('Date_Time', 'DO', 'DO_Pct_Sat', 'Temp_CondLog')], 
                             colnames = c('Date and time', 'DO (mg/L)', 'DO (% sat)', 'Temperature (C)'), 

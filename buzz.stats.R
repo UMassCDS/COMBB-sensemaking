@@ -1,11 +1,19 @@
 'buzz.stats' <- function(dataset, threshold, units, grab) {
    
-   xxx <<- dataset; xxthreshold <<- threshold; xxunits <<- units
+   # Produce summary stats table for Buzzard's Bay app
+   # Arguments: 
+   #    dataset      sensor and grab sample data frame
+   #    threshold    comparison threshold
+   #    units        units (1 = mg/L, 2 = % sat)
+   #    grab         if showing grab samples
+   # B. Compton, 23 Aug 2024
+   
+   
    
    'fmt.stats' <- function(x, y)                                                          # format moment stats
       paste0(format(round(x, 1), nsmall = 1), ' (', round(y, 0), '%)')
    
-   'fmt.hm' <- function(x) {                                                                # format minutes as h:mm
+   'fmt.hm' <- function(x) {                                                              # format minutes as h:mm
       x <- round(x, 0)
       paste(floor(x / 60), sprintf('%02d', x - floor(x / 60) * 60), sep = ':')
    }
@@ -23,54 +31,64 @@
    Unit <- c('count', rep('mg/L (% sat.)', 4), 'count', '%', rep('mg/L (% sat.)', 2), rep('hours:mins', 3))
    Sensor <- Grab <- rep('', 12)
    
-   sense.units <- dataset[, unit.vars[as.integer(units)]]                                                         # units to use for exceedance
-   sense.exceed <- sense.units < threshold                                                                        # cases below comparison threshold
    
    
+   sense.data <- dataset[dataset$Source == 1,]
+   grab.data <- dataset[dataset$Source == 2,]
+   
+
    # Calculate sensor stats
-   Sensor[1] <- format(sum(!is.na(dataset$DO)), big.mark = ',')                                                   # sample size
-   Sensor[2] <- fmt.stats(min(dataset$DO, na.rm = TRUE), min(dataset$DO_Pct_Sat, na.rm = TRUE))                   # min
-   Sensor[3] <- fmt.stats(max(dataset$DO, na.rm = TRUE), max(dataset$DO_Pct_Sat, na.rm = TRUE))                   # max
-   Sensor[4] <- fmt.stats(mean(dataset$DO, na.rm = TRUE), mean(dataset$DO_Pct_Sat, na.rm = TRUE))                 # mean
-   Sensor[5] <- fmt.stats(sd(dataset$DO, na.rm = TRUE), sd(dataset$DO_Pct_Sat, na.rm = TRUE))                     # sd
+   sense.units <- sense.data[, unit.vars[as.integer(units)]]                                                         # units to use for exceedance
+   sense.exceed <- sense.units < threshold                                                                           # cases below comparison threshold
    
-   Sensor[6] <- format(sum(sense.exceed, na.rm = TRUE), big.mark = ',')                                           # n below CT
-   Sensor[7] <- paste0(round(sum(sense.exceed, na.rm = TRUE) / sum(!is.na(sense.exceed)) * 100, 0), '%')          # % below CT
-   if(any(sense.exceed, na.rm = TRUE)) {                                                                          # if we're below CT,
-      Sensor[8] <- format(round(mean(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1)                    #    mean below CT
-      Sensor[9] <- ifelse(sum(sense.exceed, na.rm = TRUE) == 1, '',                                               #    standard deviation below CT (only if n > 1)
+   Sensor[1] <- format(sum(!is.na(sense.data$DO)), big.mark = ',')                                                   # sample size
+   Sensor[2] <- fmt.stats(min(sense.data$DO, na.rm = TRUE), min(sense.data$DO_Pct_Sat, na.rm = TRUE))                # min
+   Sensor[3] <- fmt.stats(max(sense.data$DO, na.rm = TRUE), max(sense.data$DO_Pct_Sat, na.rm = TRUE))                # max
+   Sensor[4] <- fmt.stats(mean(sense.data$DO, na.rm = TRUE), mean(sense.data$DO_Pct_Sat, na.rm = TRUE))              # mean
+   Sensor[5] <- fmt.stats(sd(sense.data$DO, na.rm = TRUE), sd(sense.data$DO_Pct_Sat, na.rm = TRUE))                  # sd
+   
+   Sensor[6] <- format(sum(sense.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
+   Sensor[7] <- paste0(round(sum(sense.exceed, na.rm = TRUE) / sum(!is.na(sense.exceed)) * 100, 0), '%')             # % below CT
+   if(any(sense.exceed, na.rm = TRUE)) {                                                                             # if we're below CT,
+      Sensor[8] <- format(round(mean(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1)                       #    mean below CT
+      Sensor[9] <- ifelse(sum(sense.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
                           format(round(sd(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1))                  
       
-      se <- sense.exceed
-      se[is.na(se)] <- FALSE                                                                                      # treat missing values as NOT below CT
-      
-      ##     sense.exceed <<- sense.exceed; dataset<<-dataset; se<<-se
-      
-      g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                                                           # make grouping variable of runs of TRUEs
-      for(i in length(g):2)                                                                                       # extend each group to the next sample so we get proper periods
-         if(g[i] == 0)
-            g[i] <- g[i - 1]
-      d <- cbind(aggregate(dataset$Date_Time, by = list(g), FUN = 'max'), 
-                 aggregate(dataset$Date_Time, by = list(g), FUN = 'min'))                                         # deltas in sec
-      d <- d[d$Group.1 != 0,]                                                                                     # drop group 0
-      m <- as.numeric(as.duration(d[, 2] - d[, 4])) / 60                                                          # duration below threshold in minutes
-      
-      Sensor[10] <- fmt.hm(min(m))                                                                                # min, max, and mean minutes below CT threshold
-      Sensor[11] <- fmt.hm(max(m))
-      Sensor[12] <- fmt.hm(mean(m))
+      if(dim(sense.data)[1] > 1) {
+         se <- sense.exceed
+         se[is.na(se)] <- FALSE                                                                                      # treat missing values as NOT below CT
+         
+       ##  sense.exceed <<- sense.exceed; sense.data<<-sense.data; se<<-se
+         
+         g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                                                           # make grouping variable of runs of TRUEs
+         for(i in length(g):2)                                                                                       # extend each group to the next sample so we get proper periods
+            if(g[i] == 0)
+               g[i] <- g[i - 1]
+         d <- cbind(aggregate(sense.data$Date_Time, by = list(g), FUN = 'max'), 
+                    aggregate(sense.data$Date_Time, by = list(g), FUN = 'min'))                                      # deltas in sec
+         d <- d[d$Group.1 != 0,]                                                                                     # drop group 0
+         m <- as.numeric(as.duration(d[, 2] - d[, 4])) / 60                                                          # duration below threshold in minutes
+         m <- m[m != 0]                                                                                              # this can happen if the last point is below the threshold
+         
+         if(length(m) > 0) {
+            Sensor[10] <- fmt.hm(min(m))                                                                             # min, max, and mean minutes below CT threshold
+            Sensor[11] <- fmt.hm(max(m))
+            Sensor[12] <- fmt.hm(mean(m))
+         }
+      }
    }
    
    
    # Calculate grab sample stats (if selected)
    if(grab) {                          
-      grab.units <- dataset[, paste0('Grab_', unit.vars[as.integer(units)])]
+      grab.units <- grab.data[, paste0('Grab_', unit.vars[as.integer(units)])]
       grab.exceed <- grab.units < threshold
       
-      Grab[1] <- format(sum(!is.na(dataset$Grab_DO)), big.mark = ',')                                                # sample size
-      Grab[2] <- fmt.stats(min(dataset$Grab_DO, na.rm = TRUE), min(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # min
-      Grab[3] <- fmt.stats(max(dataset$Grab_DO, na.rm = TRUE), max(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # max
-      Grab[4] <- fmt.stats(mean(dataset$Grab_DO, na.rm = TRUE), mean(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))         # mean
-      Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE), sd(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))             # sd
+      Grab[1] <- format(sum(!is.na(grab.data$Grab_DO)), big.mark = ',')                                              # sample size
+      Grab[2] <- fmt.stats(min(grab.data$Grab_DO, na.rm = TRUE), min(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))       # min
+      Grab[3] <- fmt.stats(max(grab.data$Grab_DO, na.rm = TRUE), max(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))       # max
+      Grab[4] <- fmt.stats(mean(grab.data$Grab_DO, na.rm = TRUE), mean(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))     # mean
+      Grab[5] <- fmt.stats(sd(grab.data$Grab_DO, na.rm = TRUE), sd(grab.data$Grab_DO_Pct_Sat, na.rm = TRUE))         # sd
       
       Grab[6] <- format(sum(grab.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
       Grab[7] <- paste0(round(sum(grab.exceed, na.rm = TRUE) / sum(!is.na(grab.exceed)) * 100, 0), '%')              # % below CT

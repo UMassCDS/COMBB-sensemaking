@@ -44,7 +44,7 @@
                        'Weekly' = list(weeks(1), 'week', 1),
                        'Bi-weekly' = list(weeks(2), 'week', 2),
                        'Monthly' = list(months(1), 'month', 1),
-                       'Entire period' = list(years(1), 'year', 1)
+                       'Entire period' = list(years(2), 'year', 2)
    )
    
    halfwin <- as.period(as.duration(intervals[[1]]) / 2)                            # split out all of the (still annoying) interval parameters
@@ -53,7 +53,8 @@
    
    vars <- c('DO', 'DO_Pct_Sat', 'Temp_CondLog', 'Grab_DO', 'Grab_DO_Pct_Sat')
    dataset[dataset$source == 2, vars[1:2]] <- NA                                    # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
-   
+  
+      
    if(moving.window) {                                                              # if moving window aggregation,
       for(i in vars)
          switch(method,
