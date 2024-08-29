@@ -19,7 +19,7 @@
       
       output$plot <- renderDygraph({                                                      # --- time series plot
          graph <- dygraph(plot.data, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
-            dyOptions(useDataTimezone = TRUE) |>
+            dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
             dySeries(names(plot.data)[2], color = '#3C2692') |>
@@ -32,12 +32,8 @@
             graph <- dyLimit(graph, input$threshold, color = 'green')
          
          
-         if(input$grab) {
-            if(input$interval != 'None' & input$moving.window)                                              # if aggregation is on and smoothing,
-               graph <- dySeries(graph, names(plot.data)[3], color = '#DB5920', strokeWidth = 2)            #    grab samples as lines
-            else                                                                                            #    else, grab samples as points
-               graph <- dySeries(graph, names(plot.data)[3], drawPoints = TRUE, pointSize = 3, color = '#DB5920', strokeWidth = 0)     
-         }
+         if(input$grab)
+            graph <- dySeries(graph, names(plot.data)[3], drawPoints = TRUE, pointSize = 3, color = '#DB5920', strokeWidth = 0)  
          
          graph
       })
@@ -62,11 +58,12 @@
       
       
       output$sensor.table <- renderDT({                                                   # --- sensor data table (in 2nd tab)           
-         buzz.table(session$userData$dataset[session$userData$dataset$Source == 1, ], 'Continuous Monitoring Data')
+         buzz.table(session$userData$dataset[session$userData$dataset$Source == 1, ], '', 'Continuous Monitoring Data')
       })
       
       output$grab.table <- renderDT({                                                     # --- grab sample data table (in 3nd tab)           
-         buzz.table(session$userData$dataset[!is.na(session$userData$dataset$Grab_DO) | !is.na(session$userData$dataset$Grab_DO_Pct_Sat), ], 'Grab Sample Monitoring Data')
+         buzz.table(session$userData$dataset[!is.na(session$userData$dataset$Grab_DO) | !is.na(session$userData$dataset$Grab_DO_Pct_Sat), ],
+                  'Grab_', 'Grab Sample Monitoring Data')
       })
       
       

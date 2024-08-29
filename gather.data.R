@@ -143,9 +143,7 @@
    #z$Date_Time <- force_tz(z$Date_Time, 'America/New_York') ################################ this might work? ##############
    
    
-   
-   
-   names(g)[c(3, 4)] <- paste0('Grab_', names(g)[c(3, 4)])        # rename grab sensor DO columns
+   names(g)[c(3:5)] <- paste0('Grab_', names(g)[c(3:5)])          # rename grab sensor DO and temp columns
    
    z <- bind_rows(z, g)                                           # combine the two datasets
    z$Site_Year <- as.factor(z$Site_Year)                          # Site_Year as factor, of course
