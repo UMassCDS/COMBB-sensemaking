@@ -42,6 +42,9 @@ sites <- sites[sites$include == TRUE,]
 Site_Year <- readRDS('inst/Site_Year.RDS')
 data <- readRDS('inst/data.RDS')
 
+about_site <- includeMarkdown('inst/about_site.md')
+
+
 
 
 # User interface ---------------------
@@ -87,7 +90,12 @@ ui <- page_sidebar(
             br(),
             hr(),
             
-            tags$img(height = 77, width = 133, src = 'umass_logo.png')
+            tags$img(height = 77, width = 133, src = 'umass_logo.png'),
+            
+            br(),
+            
+            actionLink('about_site', label = 'About this site'),
+            
          ),
          width = 340
       ),
@@ -124,6 +132,11 @@ server <- function(input, output, session) {
    disable('period')                                                 # this is dim while it shows 0,0
    disable('method')
    disable('moving.window')
+   
+   observeEvent(input$about_site, {
+      showModal(modalDialog(
+         about_site, title = 'About this site', easyClose = TRUE, fade = TRUE, footer = modalButton('OK'), size = 'l'))
+      })
    
    
    session$userData$y.range <- list(c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE)),         # full range of DO data
