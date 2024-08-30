@@ -28,6 +28,7 @@
    #        (4) grab sensor data don't have negative values, so I'm not cleaning these up
    #        (5) sensor and grab sensor data are combined, with shared site/year and date/time columns. Sensor DO 
    #            values are imputed to prevent breaks in sensor data lines when plotted; will be dropped when calculating
+   #        (6) if run in the winter, we might lose DST and be off by an hour
    # B. Compton, 31 Jul 2024
    
    
@@ -136,12 +137,9 @@
    
    z$Source <- 1
    g$Source <- 2
-   
-   z$Date_Time <- as.POSIXct(z$Date_Time, tz = 'America/New_York') + hours(4)    # kludge up the time so dygraphs gives us times in EDT
+  
+   z$Date_Time <- z$Date_Time <- force_tz(z$Date_Time, 'America/New_York')          # make sure we're in EDT
    g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
-
-   #z$Date_Time <- force_tz(z$Date_Time, 'America/New_York') ################################ this might work? ##############
-   
    
    names(g)[c(3:5)] <- paste0('Grab_', names(g)[c(3:5)])          # rename grab sensor DO and temp columns
    

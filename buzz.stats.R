@@ -55,8 +55,6 @@
          se <- sense.exceed
          se[is.na(se)] <- FALSE                                                                                      # treat missing values as NOT below CT
          
-       ##  sense.exceed <<- sense.exceed; sense.data<<-sense.data; se<<-se
-         
          g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                                                           # make grouping variable of runs of TRUEs
          for(i in length(g):2)                                                                                       # extend each group to the next sample so we get proper periods
             if(g[i] == 0)

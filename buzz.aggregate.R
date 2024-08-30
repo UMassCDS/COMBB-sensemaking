@@ -53,9 +53,7 @@
    per <- intervals[[2]]
    every <- intervals[[3]]
    
-   
-   ###   xxdataset <<- dataset; halfwin <<- halfwin; per <<- per; every <<- every; intervals <<- intervals; fn <<- fn; moving.window <<- moving.window; method <<- method
-   
+    
    vars <- c('DO', 'DO_Pct_Sat', 'Temp_CondLog', 'Grab_DO', 'Grab_DO_Pct_Sat', 'Grab_Temp_CondLog')      # all vars to aggregate
    dataset[dataset$source == 2, vars[1:2]] <- NA                                    # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
    
@@ -70,9 +68,7 @@
    
    # summary aggregation for grab sample data always, and all data when not moving window
    data.summary <- data.frame(Date_Time = as.POSIXct(unlist(slide_period(dataset$Date_Time, dataset$Date_Time, ~mean(.x), 
-                                                                         .period = per, .every = every)), tz = 'America/New_York'))         # get mean date
-   
-   ##########   ********* make sure time zone is right!!!!
+                                                                         .period = per, .every = every)), tz = 'America/New_York'))         # get mean of date and time in interval
    
    data.summary$Site_Year <- dataset$Site_Year[1]
    data.summary$Source <- 1                                                         # no more imputation, so source can always be 1

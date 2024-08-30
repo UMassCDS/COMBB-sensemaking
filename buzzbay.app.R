@@ -148,9 +148,6 @@ server <- function(input, output, session) {
    
    observeEvent(input$period, {                                      # --- Period selected. Select site, year, and period
       session$userData$period <- as.POSIXct(floor_date(as.POSIXct(input$period) - hours(4), 'days')) + hours(4)   # round to midnight (adjusted for EDT)
-      
-      # ******** may be able to use floor_date? *********
-      
       session$userData$dataset <- data[data$Site_Year == input$Site_Year &
                                           data$Date_Time >= session$userData$period[1] & data$Date_Time <= session$userData$period[2], ]
       session$userData$keep.date.window <- FALSE
