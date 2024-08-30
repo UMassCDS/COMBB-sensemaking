@@ -95,6 +95,7 @@ ui <- page_sidebar(
             br(),
             
             actionLink('about_site', label = 'About this site'),
+            downloadLink('get_log', label = 'Download log')
             
          ),
          width = 340
@@ -133,10 +134,12 @@ server <- function(input, output, session) {
    disable('method')
    disable('moving.window')
    
+   
    observeEvent(input$about_site, {
       showModal(modalDialog(
          about_site, title = 'About this site', easyClose = TRUE, fade = TRUE, footer = modalButton('OK'), size = 'l'))
-      })
+   })
+   
    
    
    session$userData$y.range <- list(c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE)),         # full range of DO data
@@ -226,6 +229,15 @@ server <- function(input, output, session) {
       session$userData$redraw.stats <- FALSE
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
+   
+   
+   
+   output$get_log <- downloadHandler(
+      filename = 'sensemaking.txt',
+      content = function(file) {
+         write.table(session$userData$log, file, sep = '\t', row.names = FALSE, quote = FALSE)
+      }
+   )
 }   
 
 

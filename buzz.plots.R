@@ -62,7 +62,7 @@
       
       output$grab.table <- renderDT({                                                     # --- grab sample data table (in 3nd tab)           
          buzz.table(session$userData$dataset[!is.na(session$userData$dataset$Grab_DO) | !is.na(session$userData$dataset$Grab_DO_Pct_Sat), ],
-                  'Grab_', 'Grab Sample Monitoring Data')
+                    'Grab_', 'Grab Sample Monitoring Data')
       })
       
       
@@ -72,4 +72,16 @@
             buzz.stats(session$userData$dataset, input$threshold, input$units, input$grab)
          })
    }
+   
+   
+   # --- record actions to log
+   if(is.null(session$userData$period))
+      session$userData$period <- input$period
+   
+   session$userData$log <- rbind(session$userData$log, data.frame(time = now(), site_year = input$Site_Year, 
+                                                                  period = paste0('(', session$userData$period[1], ' - ', session$userData$period[2], ')'), 
+                                                                  units = c('mg/L', '% sat.')[as.numeric(input$units)], 
+                                                                  threshold = input$threshold, plot_threshold = input$plot.threshold, 
+                                                                  plot_dist = input$dist.plot, plot_grab = input$grab, 
+                                                                  interval = input$interval, statistic = input$method, moving_window = input$moving.window))
 }
