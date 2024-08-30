@@ -52,7 +52,7 @@ ui <- page_sidebar(
    theme = bs_theme(bootswatch = 'cosmo', version = 5),     # bslib version defense. Use version_default() to update
    useShinyjs(),
    
-   title = 'COMBB: Data Sensemaking Tool (alpha version)',
+   title = 'COMBB: Data Sensemaking Tool (beta version)',
    
    sidebar = 
       sidebar(
