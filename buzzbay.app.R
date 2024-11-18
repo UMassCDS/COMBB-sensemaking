@@ -26,7 +26,7 @@ source('buzz.stats.R')
 source('dygraphs_plugins.R')
 
 
-unit.vars <<- c('DO', 'DO_Pct_Sat')             # these two are global, shared with subroutines and other sessions
+unit.vars <<- c('DO', 'DO_Pct_Sat')                         # these two are global, shared with subroutines and other sessions
 unit.names <<- c('mg/L', '% saturation')
 
 
@@ -41,6 +41,8 @@ sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
 Site_Year <- readRDS('inst/Site_Year.RDS')
+Site_Year <- rbind('', Site_Year)                           # add blank for first Site_Year so we can start up without any data showing
+
 data <- readRDS('inst/data.RDS')
 
 about_site <- includeMarkdown('inst/about_site.md')
@@ -59,11 +61,11 @@ ui <- page_sidebar(
       sidebar(
          add_busy_spinner(spin = 'fading-circle', position = 'bottom-left', onstart = FALSE, timeout = 500),
          
-         #         card(textInput('intervieweeID', 'Interviewee ID', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID')),
+         #         card(textInput('intervieweeID', 'Interviewee ID', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID')),  # I like this at the bottom better ....
          
          card(
             card_header (h4("Data Viewing Controls")),
-            selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year),
+            selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year, selected = NULL),
             
             sliderInput('period', label = 'Time period', min = 0, max = 0, value = c(0, 0)),
             
@@ -161,18 +163,20 @@ server <- function(input, output, session) {
    
    
    observeEvent(input$Site_Year, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
-      session$userData$dataset <- data[data$Site_Year == input$Site_Year, ] 
-      
-      minmax <- c(min(session$userData$dataset$Date_Time), max(session$userData$dataset$Date_Time))
-      freezeReactiveValue(input, 'period')
-      updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
-                        timeFormat = '%b %e', session = getDefaultReactiveDomain())
-      enable('period')
-      session$userData$keep.date.window <- FALSE
-      session$userData$redraw.stats <- TRUE
-      if(input$interval != 'None')                                   #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
-         session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
-      buzz.plots(input, output, session = getDefaultReactiveDomain())
+      if(input$Site_Year != '') {
+         session$userData$dataset <- data[data$Site_Year == input$Site_Year, ] 
+         
+         minmax <- c(min(session$userData$dataset$Date_Time), max(session$userData$dataset$Date_Time))
+         freezeReactiveValue(input, 'period')
+         updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
+                           timeFormat = '%b %e', session = getDefaultReactiveDomain())
+         enable('period')
+         session$userData$keep.date.window <- FALSE
+         session$userData$redraw.stats <- TRUE
+         if(input$interval != 'None')                                   #     if aggregation is on, need to reaggregate (means we're pulling data twice; I don't think we care)
+            session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
+         buzz.plots(input, output, session = getDefaultReactiveDomain())
+      }
    })
    
    
