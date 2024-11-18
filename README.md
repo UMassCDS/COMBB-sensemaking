@@ -1,10 +1,20 @@
 # COMBB: Data Sensemaking Tool
 
-The “COMBB: Data Sensemaking Tool” provides an interface for the exploration of dissolved oxygen monitoring data collected using two differing methodologies: grab sample and in-situ automated sensor technologies. The tool allows a user to visualize the data, calculate statistics at varying time-intervals, and compare across the data collected using each methodology.
+The “COMBB: Data Sensemaking Tool” provides an interface for the exploration of dissolved oxygen monitoring data 
+collected using two differing methodologies: grab sample and in-situ automated sensor technologies. The tool allows
+a user to visualize the data, calculate statistics at varying time-intervals, and compare across the data collected 
+using each methodology.  
 
-This tool was created for use during semi-structured interviews as a mechanism for eliciting information about how individuals make sense and interpret data that has been collected at differing time intervals. However, this tool is publicly available and can be used by anyone to examine the datasets included.
+The tool was created for use during semi-structured interviews as a mechanism for eliciting 
+information about how individuals make sense and interpret data that has been collected at different time intervals. 
+The tool is publicly available and can be used by anyone to examine the datasets included. 
 
-This riik was developed by Bradley Compton and Ethan Plunkett of Data Core at the Center for Data Science, Manning College of Information and Computer Sciences, UMass Amherst, for Seema Ravandale and Anita Milman of the Department of Environmental Conservation, UMass Amherst. This tool was developed as part of the Continuous Oxygen Monitoring in Buzzards Bay (COMBB) research project, supported in part by the National Science Foundation under Grant No. 2317235 A.
+This site was developed by Bradley Compton and Ethan Plunkett of 
+<a href="https://ds.cs.umass.edu/programs/data-core" target="_blank" rel="noopener noreferrer">Data Core at the Center for
+Data Science</a>, Manning College of Information and Computer Sciences, University of Massachusetts, Amherst, 
+as part of the 
+<a href="https://watergovernance.umasscreate.net/water-quality-monitoring" target="_blank" rel="noopener noreferrer">Continuous Oxygen Monitoring in Buzzards Bay (COMBB) research project</a>, supported in part by the National Science Foundation under
+<a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=2317235&HistoricalAwards=false" target="_blank" rel="noopener noreferrer">Grant No. 2317235 A</a>.
 
 ## Running this app on your own computer
 
