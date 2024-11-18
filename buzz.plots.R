@@ -18,7 +18,7 @@
          names(plot.data)[3] <- 'Grab sample DO'
       
       output$plot <- renderDygraph({                                                      # --- time series plot
-         graph <- dygraph(plot.data, main = 'Dissolved oxygen', ylab = unit.names[as.integer(input$units)]) |>
+         graph <- dygraph(plot.data, ylab = unit.names[as.integer(input$units)]) |>
             dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>

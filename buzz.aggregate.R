@@ -32,8 +32,6 @@
                 'min' = 'suppressWarnings(min(.x, na.rm = TRUE))',
                 'max' = 'suppressWarnings(max(.x, na.rm = TRUE))',
                 'median' = 'median(.x, na.rm = TRUE)',
-                'p5' = 'quantile(.x, 0.05, na.rm = TRUE)',
-                'p10' = 'quantile(.x, 0.10, na.rm = TRUE)',
                 'sd' = 'sd(.x, na.rm = TRUE)')
    
    

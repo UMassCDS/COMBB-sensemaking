@@ -15,6 +15,8 @@ library(lubridate)
 library(shinybusy)
 library(shinyWidgets)
 library(shinyjs)
+library(bslib)
+library(bsicons)
 
 
 source('buzz.aggregate.R')
@@ -31,8 +33,7 @@ unit.names <<- c('mg/L', '% saturation')
 aggreg.choices = list('None', 'Hourly', '4 hours', '8 hours', '12 hours', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 
                       'Entire period')
 
-method.choices = c('Mean' = 'mean', 'Median' = 'median', 'Minimum' = 'min', 'Maximum' = 'max', 
-                   '5th percentile' = 'p5', '10th percentile' = 'p10', 'Standard deviation' = 'sd')       
+method.choices = c('Mean' = 'mean', 'Median' = 'median', 'Minimum' = 'min', 'Maximum' = 'max', 'Standard deviation' = 'sd')       
 
 
 # Read site, dataset, and grab sample data
@@ -52,13 +53,16 @@ ui <- page_sidebar(
    theme = bs_theme(bootswatch = 'cosmo', version = 5),     # bslib version defense. Use version_default() to update
    useShinyjs(),
    
-   title = 'COMBB: Data Sensemaking Tool (beta version)',
+   title = 'COMBB: Data Sensemaking Tool',
    
    sidebar = 
       sidebar(
          add_busy_spinner(spin = 'fading-circle', position = 'bottom-left', onstart = FALSE, timeout = 500),
          
+         #         card(textInput('intervieweeID', 'Interviewee ID', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID')),
+         
          card(
+            card_header (h4("Data Viewing Controls")),
             selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year),
             
             sliderInput('period', label = 'Time period', min = 0, max = 0, value = c(0, 0)),
@@ -85,25 +89,35 @@ ui <- page_sidebar(
             selectInput('method', label = 'Statistic', choices = method.choices, 
                         selected = 'mean'),
             
-            materialSwitch('moving.window', label = 'Moving window'),
+            materialSwitch('moving.window', label = (span('Moving window', tooltip(bs_icon('info-circle'), 'This is a test', options = list(trigger = 'click'))))),
+            #           materialSwitch('moving.window', label = 'Moving window'),
+            
+            actionButton('reset', 'Reset', width = '25%'),
+            
             
             br(),
             hr(),
+            
+            textInput('intervieweeID', 'Interviewee', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID'),
+            
+            tags$style(".btn {width: 50%;}"),
+            downloadButton('get_log', label = 'End interview'),
             
             tags$img(height = 77, width = 133, src = 'umass_logo.png'),
             
             br(),
             
-            actionLink('about_site', label = 'About this site'),
-            downloadLink('get_log', label = 'Download log')
+            actionLink('about_site', label = 'About this site')
             
          ),
          width = 340
       ),
    
    card(
+      card_header (h3("Dissolved Oxygen Data Viewer")),
       navset_pill(
          nav_panel('Plot',
+                   br(),
                    fluidRow(
                       column(width = 10,
                              dygraphOutput('plot')
@@ -231,9 +245,36 @@ server <- function(input, output, session) {
    })
    
    
+   observeEvent(input$reset, {                                       # --- Reset inputs
+      
+      session$userData$dataset <- data[data$Site_Year == input$Site_Year, ]                           # Updating time period slider is crazy
+      minmax <- c(min(session$userData$dataset$Date_Time), max(session$userData$dataset$Date_Time))
+      freezeReactiveValue(input, 'period')
+      updateSliderInput('period', min = minmax[1], max = minmax[2], value = minmax,
+                        timeFormat = '%b %e', session = getDefaultReactiveDomain())
+      enable('period')
+      
+      updateNumericInput(session, inputId = 'threshold', value = 5)
+      updateMaterialSwitch(session, inputId = 'plot.threshold', value = FALSE)
+      
+      updateMaterialSwitch(session, inputId = 'dist.plot', value = FALSE)
+      ####### WHEN it's ready      updateMaterialSwitch(session, inputId = 'sensor', value = FALSE)
+      updateMaterialSwitch(session, inputId = 'grab', value = FALSE)
+      
+      updateSelectInput(session, 'interval', selected = 'None')
+      updateSelectInput(session, 'method', selected = 'mean')
+      
+      updateMaterialSwitch(session, inputId = 'moving.window', value = FALSE)
+   })
+   
    
    output$get_log <- downloadHandler(
-      filename = 'sensemaking.txt',
+      filename = function() {
+         x <- paste0('sensemaking', ifelse(input$intervieweeID != '', '_', ''), input$intervieweeID)
+         gsub('[ <>:"/\\|?*]', '_', x) |>
+            gsub('[_]+', '_', x = _) |>
+            paste0('.txt')
+      },
       content = function(file) {
          write.table(session$userData$log, file, sep = '\t', row.names = FALSE, quote = FALSE)
       }
