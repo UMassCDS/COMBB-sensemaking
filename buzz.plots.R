@@ -7,7 +7,7 @@
    
    
    
-   vars <- session$userData$dataset[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab + 1)], unit.vars[as.integer(input$units)]))]
+   vars <- session$userData$dataset[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab + 1)], 'DO'))]
    
    if(dim(vars)[1] > 0) {
       
@@ -18,10 +18,10 @@
          names(plot.data)[3] <- 'Grab sample DO'
       
       output$plot <- renderDygraph({                                                      # --- time series plot
-         graph <- dygraph(plot.data, ylab = unit.names[as.integer(input$units)]) |>
+         graph <- dygraph(plot.data, ylab = 'mg/L') |>
             dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
-            dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range[[as.numeric(input$units)]]) |>
+            dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range) |>
             dySeries(names(plot.data)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             dyCrosshair(direction = "vertical")
@@ -46,7 +46,7 @@
          output$sinaplot <- renderPlot(
             if(input$dist.plot & length(x[[1]]) >= 2) {
                par(mai = c(0.75, 0, 0.25, 0))                                             # margins: bottom, left, top, right (inches). Calibrated to dygraph.
-               sinaplot(x, xlab = '', pch = 20, cex = 1, seed = 1, ylim = session$userData$y.range[[as.numeric(input$units)]],
+               sinaplot(x, xlab = '', pch = 20, cex = 1, seed = 1, ylim = session$userData$y.range,
                         xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'), main = 'Distribution plot', cex.main = 1)
             }
             else
@@ -69,7 +69,7 @@
       
       if(session$userData$redraw.stats)                                                   # --- summary stats table
          output$stats <- render_gt({
-            buzz.stats(session$userData$dataset, input$threshold, input$units, input$grab)
+            buzz.stats(session$userData$dataset, input$threshold, input$grab)
          })
    }
    
@@ -80,7 +80,6 @@
    
    session$userData$log <- rbind(session$userData$log, data.frame(time = now(), site_year = input$Site_Year, 
                                                                   period = paste0('(', session$userData$period[1], ' - ', session$userData$period[2], ')'), 
-                                                                  units = c('mg/L', '% sat.')[as.numeric(input$units)], 
                                                                   threshold = input$threshold, plot_threshold = input$plot.threshold, 
                                                                   plot_dist = input$dist.plot, plot_grab = input$grab, 
                                                                   interval = input$interval, statistic = input$method, moving_window = input$moving.window))

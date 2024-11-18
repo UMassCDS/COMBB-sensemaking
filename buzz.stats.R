@@ -1,17 +1,16 @@
-'buzz.stats' <- function(dataset, threshold, units, grab) {
+'buzz.stats' <- function(dataset, threshold, grab) {
    
    # Produce summary stats table for Buzzard's Bay app
    # Arguments: 
    #    dataset      sensor and grab sample data frame
    #    threshold    comparison threshold
-   #    units        units (1 = mg/L, 2 = % sat)
    #    grab         if showing grab samples
    # B. Compton, 23 Aug 2024
    
    
    
-   'fmt.stats' <- function(x, y)                                                          # format moment stats
-      paste0(format(round(x, 1), nsmall = 1), ' (', round(y, 0), '%)')
+   'fmt.stats' <- function(x)                                                             # format moment stats
+      paste0(format(round(x, 1), nsmall = 1))
    
    'fmt.hm' <- function(x) {                                                              # format minutes as h:mm
       x <- round(x, 0)
@@ -28,21 +27,21 @@
                   'Longest duration below CT', 
                   'Mean time below CT')
    
-   Unit <- c('count', rep('mg/L (% sat.)', 4), 'count', '%', rep('mg/L (% sat.)', 2), rep('hours:mins', 3))
+   Unit <- c('count', rep('mg/L', 4), 'count', '%', rep('mg/L', 2), rep('hours:mins', 3))
    Sensor <- Grab <- rep('', 12)
    
    
    
    # Calculate sensor stats
    sense.data <- dataset[dataset$Source == 1,]
-   sense.units <- sense.data[, unit.vars[as.integer(units)]]                                                         # units to use for exceedance
+   sense.units <- sense.data[, 'DO']                                                                                 # units to use for exceedance
    sense.exceed <- sense.units < threshold                                                                           # cases below comparison threshold
    
    Sensor[1] <- format(sum(!is.na(sense.data$DO)), big.mark = ',')                                                   # sample size
-   Sensor[2] <- fmt.stats(min(sense.data$DO, na.rm = TRUE), min(sense.data$DO_Pct_Sat, na.rm = TRUE))                # min
-   Sensor[3] <- fmt.stats(max(sense.data$DO, na.rm = TRUE), max(sense.data$DO_Pct_Sat, na.rm = TRUE))                # max
-   Sensor[4] <- fmt.stats(mean(sense.data$DO, na.rm = TRUE), mean(sense.data$DO_Pct_Sat, na.rm = TRUE))              # mean
-   Sensor[5] <- fmt.stats(sd(sense.data$DO, na.rm = TRUE), sd(sense.data$DO_Pct_Sat, na.rm = TRUE))                  # sd
+   Sensor[2] <- fmt.stats(min(sense.data$DO, na.rm = TRUE))                                                          # min
+   Sensor[3] <- fmt.stats(max(sense.data$DO, na.rm = TRUE))                                                          # max
+   Sensor[4] <- fmt.stats(mean(sense.data$DO, na.rm = TRUE))                                                         # mean
+   Sensor[5] <- fmt.stats(sd(sense.data$DO, na.rm = TRUE))                                                           # sd
    
    Sensor[6] <- format(sum(sense.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
    Sensor[7] <- paste0(round(sum(sense.exceed, na.rm = TRUE) / sum(!is.na(sense.exceed)) * 100, 0), '%')             # % below CT
@@ -76,14 +75,14 @@
    
    # Calculate grab sample stats (if selected)
    if(grab) {                          
-      grab.units <- dataset[, paste0('Grab_', unit.vars[as.integer(units)])]
+      grab.units <- dataset$Grab_DO
       grab.exceed <- grab.units < threshold
       
       Grab[1] <- format(sum(!is.na(dataset$Grab_DO)), big.mark = ',')                                                # sample size
-      Grab[2] <- fmt.stats(min(dataset$Grab_DO, na.rm = TRUE), min(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # min
-      Grab[3] <- fmt.stats(max(dataset$Grab_DO, na.rm = TRUE), max(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))           # max
-      Grab[4] <- fmt.stats(mean(dataset$Grab_DO, na.rm = TRUE), mean(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))         # mean
-      Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE), sd(dataset$Grab_DO_Pct_Sat, na.rm = TRUE))             # sd
+      Grab[2] <- fmt.stats(min(dataset$Grab_DO, na.rm = TRUE))                                                       # min
+      Grab[3] <- fmt.stats(max(dataset$Grab_DO, na.rm = TRUE))                                                       # max
+      Grab[4] <- fmt.stats(mean(dataset$Grab_DO, na.rm = TRUE))                                                      # mean
+      Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE))                                                        # sd
       
       Grab[6] <- format(sum(grab.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
       Grab[7] <- paste0(round(sum(grab.exceed, na.rm = TRUE) / sum(!is.na(grab.exceed)) * 100, 0), '%')              # % below CT

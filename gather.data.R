@@ -17,10 +17,8 @@
    #        Result columns:      Site_Year         site & year (site description - year)
    #                             Date_Time         date & time of each obs (year-month-day h:m:s)
    #                             DO                DO from sensors (mg/L)
-   #                             DO_Pct_Sat        DO from sensors (% saturation)
    #                             Temp_CondLog      temperature (C)
    #                             Grab_DO           DO from grab sensors (mg/L)
-   #                             Grab_DO_Pct_Sat   DO from grab sensors (% saturation)
    # Notes: (1) if a sensor/grab sample file matches more than one column name variant, the first one
    #            listed in col.names will be chosen. (This is what happens when your data are a mess. Grr.)
    #        (2) sensor files are .xlsx, grab sensor files are .xls
@@ -41,7 +39,6 @@
    col.names <- list(list('Site_Year', 'Site_Year'),                            # standard col name, variants
                      list('Date_Time', c('SAMP_DATE_TIME', 'Date Time')), 
                      list('DO', c('DO_MGL2', 'DO_mgl', 'DO_MGL')),
-                     list('DO_Pct_Sat', c('DP_SAT', 'DO_SAT')),
                      list('Temp_CondLog', c('Temp_C_condlogger', 'TEMP_C')))
    
    
@@ -54,7 +51,7 @@
    sites <- sites[order(sites$description),]
    
    sy <- data.frame(matrix(NA, 0, 4))
-   z <- g <- matrix(NA, 0, 5)                                     # empty site and grab sensor matrices
+   z <- g <- matrix(NA, 0, 4)                                     # empty site and grab sensor matrices
    q <- rep(NA, dim(z)[2])
    for(i in 1:length(col.names)) q[i] <- col.names[[i]][[1]]
    colnames(z) <- q
@@ -84,15 +81,16 @@
             c[k] <- d[1]                                          #       first matching column name
          }
          
+         
          t <- data.frame(standard = q, found.column = names(x)[c])
          print.data.frame(t[-1,], row.names = FALSE)
          
          x <- x[, c]                   # don't let rbind's miserable name matching mess us up
          names(x) <- q
          
-         b <- sum(x$DO < 0, na.rm = TRUE) + sum(x$DO_Pct_Sat < 0, na.rm = TRUE)  # set negative values to NA
+         b <- sum(x$DO < 0, na.rm = TRUE)                         # set negative values to NA
          x$DO[x$DO < 0] <- NA
-         x$DO_Pct_Sat[x$DO_Pct_Sat < 0] <- NA
+         
          
          cat('\n', format(dim(x)[1], big.mark = ','), ' cases; date range = ', fmt.date(min(x$Date_Time)), ' - ', fmt.date(max(x$Date_Time)), sep = '')
          if(b > 0)
@@ -111,11 +109,10 @@
          
          x$Date_Time <- paste(unlist(lapply(x$SAMP_DATE, substr, 1, 10)), unlist(lapply(x$TIME, substr, 12, 99))) #       combine date and time
          
-         x <- x[,c('Site_Year', 'Date_Time', 'DO_MGL', 'DO_SAT', 'TEMP_C')] #       pull columns in correct order
-         names(x) <- unlist(lapply(col.names, `[[`, 1))       #       and apply standard names
+         x <- x[,c('Site_Year', 'Date_Time', 'DO_MGL', 'TEMP_C')] #       pull columns in correct order
+         names(x) <- unlist(lapply(col.names, `[[`, 1))           #       and apply standard names
          
          suppressWarnings(x$DO <- as.numeric(x$DO))               #       these come in as character
-         x$DO_Pct_Sat <- x$DO_Pct_Sat * 100                       #       remove annoying % from DO_Pct_Sat (it gets interpreted as proportion, not percent)
          
          cat(format(dim(x)[1], big.mark = ','), ' cases; date range = ', fmt.date(min(x$Date_Time)), ' - ', fmt.date(max(x$Date_Time)), '\n', sep = '')
          
@@ -132,12 +129,12 @@
    saveRDS(sy, 'inst/Site_Year.RDS')
    
    
-   # Combine sensor and grab sensor data into a single data frame, with Site_Year, Date_Time, DO, DO_Pct_Sat, Temp_CondLog, Grab_DO, Grab_DO_Pct_Sat, and Source
+   # Combine sensor and grab sensor data into a single data frame, with Site_Year, Date_Time, DO, Temp_CondLog, Grab_DO, and Source
    # Source is 1 for sensors, and 2 for grab sensors
    
    z$Source <- 1
    g$Source <- 2
-  
+   
    z$Date_Time <- z$Date_Time <- force_tz(z$Date_Time, 'America/New_York')          # make sure we're in EDT
    g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
    
@@ -151,10 +148,8 @@
       arrange(.by_group = TRUE)                                   # exact same time as sensor data, which does happen at least once)
    
    for(i in 1:dim(z)[1]) {                                        # impute sensor rows where NA is inserted to represent grab sensor data by copying previous value
-      if(z$Source[i] == 2 & is.na(z$DO[i]))                       # (we're assuming 1st row isn't grab sensor data; it isn't now)
+      if(!is.na(z$Source[i]) & z$Source[i] == 2 & is.na(z$DO[i])) # (we're assuming 1st row isn't grab sensor data; it isn't now)
          z$DO[i] <- z$DO[i - 1]
-      if(z$Source[i] == 2 & is.na(z$DO_Pct_Sat[i]))
-         z$DO_Pct_Sat[i] <- z$DO_Pct_Sat[i - 1]
    }
    
    saveRDS(data.frame(z), 'inst/data.RDS')                        # un-tibble the results so we don't have problems later

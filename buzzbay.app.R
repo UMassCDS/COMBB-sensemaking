@@ -27,7 +27,7 @@ source('dygraphs_plugins.R')
 
 
 unit.vars <<- c('DO', 'DO_Pct_Sat')                         # these two are global, shared with subroutines and other sessions
-unit.names <<- c('mg/L', '% saturation')
+unit.names <<- c('mg/L')
 
 
 aggreg.choices = list('None', 'Hourly', '4 hours', '8 hours', '12 hours', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 
@@ -69,29 +69,37 @@ ui <- page_sidebar(
             
             sliderInput('period', label = 'Time period', min = 0, max = 0, value = c(0, 0)),
             
-            radioButtons('units', label = 'Units', choiceNames = as.list(unit.names), choiceValues = 1:2),
             
-            numericInput('threshold', label = 'Comparison threshold', value = '',
-                         min = 0, step = 1),  
+            materialSwitch('grab', label = 'Plot grab sample data', 
+                           value = FALSE),
+            
+            materialSwitch('sensor', label = 'Plot sensor data', 
+                           value = FALSE),
             
             materialSwitch('plot.threshold', label = 'Plot comparison threshold', 
                            value = FALSE),
             
+            numericInput('threshold', label = 'Comparison threshold', value = 5,
+                         min = 0, step = 1),  
+            
             materialSwitch('dist.plot', label = 'Show distribution plot', value = FALSE),
             
-            materialSwitch('grab', label = 'Plot grab sample data', 
-                           value = FALSE),
             
             br(),
             
             span(HTML('<h5 style="display: inline-block;">Aggregation</h5>')),
             
-            selectInput('interval', label = 'Interval', choices = aggreg.choices),
+            selectInput('interval', label = span('Interval', 
+                                                 tooltip(bs_icon('info-circle'), 'This is a hover tooltip')), 
+                        choices = aggreg.choices),
             
-            selectInput('method', label = 'Statistic', choices = method.choices, 
-                        selected = 'mean'),
+            selectInput('method', label = span('Statistic', 
+                                               tooltip(bs_icon('info-circle'), 'This is a hover tooltip with 300 ms delay', options = list(delay = 300))), 
+                        choices = method.choices, selected = 'mean'),
             
-            materialSwitch('moving.window', label = (span('Moving window', tooltip(bs_icon('info-circle'), 'This is a test', options = list(trigger = 'click'))))),
+            materialSwitch('moving.window', label = span('Moving window', 
+                                                         tooltip(bs_icon('info-circle'), 'This tooltip requres clicks', options = list(trigger = 'click'))
+            )),
             #           materialSwitch('moving.window', label = 'Moving window'),
             
             actionButton('reset', 'Reset', width = '25%'),
@@ -127,13 +135,13 @@ ui <- page_sidebar(
                       column(width = 2, 
                              plotOutput('sinaplot'))
                    ),
-                   br(),
-                   gt_output('stats')
          ),
          nav_panel('Sensor table',
                    DTOutput('sensor.table')),
          nav_panel('Grab sample table',
-                   DTOutput('grab.table'))
+                   DTOutput('grab.table')),
+         nav_panel('Summary Stats',
+                   gt_output('stats'))
       )
    )
 )
@@ -158,8 +166,8 @@ server <- function(input, output, session) {
    
    
    
-   session$userData$y.range <- list(c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE)),         # full range of DO data
-                                    c(min(c(data$DO_Pct_Sat, data$Grab_DO_Pct_Sat), na.rm = TRUE), max(c(data$DO_Pct_Sat, data$Grab_DO_Pct_Sat), na.rm = TRUE)))
+   session$userData$y.range <- c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE))        # full range of DO data
+                                  
    
    
    observeEvent(input$Site_Year, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
@@ -188,16 +196,6 @@ server <- function(input, output, session) {
       session$userData$redraw.stats <- TRUE
       if(input$interval != 'None')                                   #     if aggregation is on, need to reaggregate 
          session$userData$dataset <- buzz.aggregate(data, input$Site_Year, session$userData$period, input$interval, input$method, input$moving.window, input$threshold)
-      buzz.plots(input, output, session = getDefaultReactiveDomain())
-   })
-   
-   
-   observeEvent(input$units, {                                       # --- Units changed
-      freezeReactiveValue(input,'threshold')
-      updateNumericInput('threshold', label = paste0('Comparison threshold ',  ifelse(input$units == 1, '(mg/L)', '(% saturation)')), 
-                         value = ifelse(input$units == 1, 5, 75), session = getDefaultReactiveDomain())
-      session$userData$keep.date.window <- TRUE
-      session$userData$redraw.stats <- TRUE                          #    we really want FALSE here, but we're triggering the CT input
       buzz.plots(input, output, session = getDefaultReactiveDomain())
    })
    
@@ -262,7 +260,7 @@ server <- function(input, output, session) {
       updateMaterialSwitch(session, inputId = 'plot.threshold', value = FALSE)
       
       updateMaterialSwitch(session, inputId = 'dist.plot', value = FALSE)
-      ####### WHEN it's ready      updateMaterialSwitch(session, inputId = 'sensor', value = FALSE)
+      updateMaterialSwitch(session, inputId = 'sensor', value = FALSE)
       updateMaterialSwitch(session, inputId = 'grab', value = FALSE)
       
       updateSelectInput(session, 'interval', selected = 'None')

@@ -52,13 +52,13 @@
    every <- intervals[[3]]
    
     
-   vars <- c('DO', 'DO_Pct_Sat', 'Temp_CondLog', 'Grab_DO', 'Grab_DO_Pct_Sat', 'Grab_Temp_CondLog')      # all vars to aggregate
+   vars <- c('DO', 'Temp_CondLog', 'Grab_DO', 'Grab_Temp_CondLog')                  # all vars to aggregate
    dataset[dataset$source == 2, vars[1:2]] <- NA                                    # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
    
    
    if(moving.window) {                                                              # if we're doing moving window,
-      vars.summary <- vars[4:6]                                                     #    we'll do summary aggregation for grab sample data
-      vars.mw <- vars[1:3]                                                          #    and then moving window for sensor data
+      vars.summary <- vars[3:4]                                                     #    we'll do summary aggregation for grab sample data
+      vars.mw <- vars[1:2]                                                          #    and then moving window for sensor data
    }
    else                                                                             # else,
       vars.summary <- vars                                                          #    we'll do summary aggregation for all data
@@ -99,8 +99,13 @@
       
       
       
-      data.summary <- cbind(data.summary, DO = NA, DO_Pct_Sat = NA, Temp_CondLog = NA)
+      data.summary <- cbind(data.summary, DO = NA, Temp_CondLog = NA)
       dataset[vars.summary] <- NA
+      print(dim(dataset))
+      print(dim(data.summary))
+      dataset <<- dataset
+      data.summary <<- data.summary
+      
       dataset <- rbind(dataset, data.summary)
    }
    else
