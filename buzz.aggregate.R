@@ -17,7 +17,7 @@
    
    #  zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
    #  x <- buzz.aggregate(data = zzz[[1]], Site_Year = zzz[[2]], period = zzz[[3]], interval = zzz[[4]], method = zzz[[5]], moving.window = zzz[[6]], threshold = zzz[[7]])
-   
+   #  data = zzz[[1]]; Site_Year = zzz[[2]]; period = zzz[[3]]; interval = zzz[[4]]; method = zzz[[5]]; moving.window = zzz[[6]]; threshold = zzz[[7]]
    
    dataset <- data[data$Site_Year == Site_Year &                                    # get fresh dataset
                       data$Date_Time >= period[1] & data$Date_Time <= period[2], ]
@@ -51,7 +51,7 @@
    per <- intervals[[2]]
    every <- intervals[[3]]
    
-    
+   
    vars <- c('DO', 'Temp_CondLog', 'Grab_DO', 'Grab_Temp_CondLog')                  # all vars to aggregate
    dataset[dataset$source == 2, vars[1:2]] <- NA                                    # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
    
@@ -64,6 +64,7 @@
       vars.summary <- vars                                                          #    we'll do summary aggregation for all data
    
    
+   
    # summary aggregation for grab sample data always, and all data when not moving window
    data.summary <- data.frame(Date_Time = as.POSIXct(unlist(slide_period(dataset$Date_Time, dataset$Date_Time, ~mean(.x), 
                                                                          .period = per, .every = every)), tz = 'America/New_York'))         # get mean of date and time in interval
@@ -74,9 +75,8 @@
       data.summary[, i] <- unlist(slide_period(dataset[, i], dataset$Date_Time, .f = ~eval(parse(text = fn)), .period = per, .every = every))
       data.summary[data.summary[, i] %in% c(-Inf, Inf), i] <- NA                    # so min and max don't cause trouble
    }
-   ds1 <<- data.summary
    data.summary <- data.summary[apply(data.summary[, vars.summary], 1, function(x) any(!is.na(x))), ]    # no point in keeping a lot of empty rows 
-   ds2 <<- data.summary
+   
    
    # moving window aggregation for sensor data if selected
    if(moving.window) {                                                              # if moving window aggregation,
@@ -101,17 +101,10 @@
       
       data.summary <- cbind(data.summary, DO = NA, Temp_CondLog = NA)
       dataset[vars.summary] <- NA
-      print(dim(dataset))
-      print(dim(data.summary))
-      dataset <<- dataset
-      data.summary <<- data.summary
-      
       dataset <- rbind(dataset, data.summary)
    }
    else
       dataset <- data.summary
-   
-   done.dataset <<- dataset
    
    dataset
 }

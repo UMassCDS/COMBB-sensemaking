@@ -129,6 +129,13 @@
    saveRDS(sy, 'inst/Site_Year.RDS')
    
    
+   date.range <- c(max(aggregate(Date_Time ~ Site_Year, data = z, FUN = min)$Date_Time),           # trim sensor and grab data to common sensor date range 
+                   min(aggregate(Date_Time ~ Site_Year, data = z, FUN = max)$Date_Time))
+   cat('Trimming entire dataset to common sensor date range ', fmt.date(date.range[1]), ' - ' , fmt.date(date.range[2]), '\n', sep = '')
+   z <- z[z$Date_Time >= date.range[1] & z$Date_Time <= date.range[2], ]
+   g <- g[g$Date_Time >= date.range[1] & g$Date_Time <= date.range[2], ]
+   
+   
    # Combine sensor and grab sensor data into a single data frame, with Site_Year, Date_Time, DO, Temp_CondLog, Grab_DO, and Source
    # Source is 1 for sensors, and 2 for grab sensors
    
@@ -138,7 +145,7 @@
    z$Date_Time <- z$Date_Time <- force_tz(z$Date_Time, 'America/New_York')          # make sure we're in EDT
    g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
    
-   names(g)[c(3:5)] <- paste0('Grab_', names(g)[c(3:5)])          # rename grab sensor DO and temp columns
+   names(g)[c(3:4)] <- paste0('Grab_', names(g)[c(3:4)])          # rename grab sensor DO and temp columns
    
    z <- bind_rows(z, g)                                           # combine the two datasets
    z$Site_Year <- as.factor(z$Site_Year)                          # Site_Year as factor, of course

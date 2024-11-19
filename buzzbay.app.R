@@ -41,12 +41,9 @@ sites <- read.csv('inst/sitenames.csv')
 sites <- sites[sites$include == TRUE,]
 
 Site_Year <- readRDS('inst/Site_Year.RDS')
-Site_Year <- rbind('', Site_Year)                           # add blank for first Site_Year so we can start up without any data showing
-
 data <- readRDS('inst/data.RDS')
 
 about_site <- includeMarkdown('inst/about_site.md')
-
 
 
 
@@ -55,17 +52,22 @@ ui <- page_sidebar(
    theme = bs_theme(bootswatch = 'cosmo', version = 5),     # bslib version defense. Use version_default() to update
    useShinyjs(),
    
+   tags$style(HTML('.modal-footer .btn {width: 10%;}')),    # set button width for About this site
+   
    title = 'COMBB: Data Sensemaking Tool',
    
    sidebar = 
       sidebar(
          add_busy_spinner(spin = 'fading-circle', position = 'bottom-left', onstart = FALSE, timeout = 500),
          
-         #         card(textInput('intervieweeID', 'Interviewee ID', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID')),  # I like this at the bottom better ....
-         
          card(
             card_header (h4("Data Viewing Controls")),
-            selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year, selected = NULL),
+            
+            actionLink('about_site', label = 'About this site'),
+            
+            br(),
+            
+            selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year),
             
             sliderInput('period', label = 'Time period', min = 0, max = 0, value = c(0, 0)),
             
@@ -84,7 +86,6 @@ ui <- page_sidebar(
             
             materialSwitch('dist.plot', label = 'Show distribution plot', value = FALSE),
             
-            
             br(),
             
             span(HTML('<h5 style="display: inline-block;">Aggregation</h5>')),
@@ -100,25 +101,17 @@ ui <- page_sidebar(
             materialSwitch('moving.window', label = span('Moving window', 
                                                          tooltip(bs_icon('info-circle'), 'This tooltip requres clicks', options = list(trigger = 'click'))
             )),
-            #           materialSwitch('moving.window', label = 'Moving window'),
             
             actionButton('reset', 'Reset', width = '25%'),
             
-            
-            br(),
             hr(),
             
             textInput('intervieweeID', 'Interviewee', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID'),
             
-            tags$style(".btn {width: 50%;}"),
+            tags$style('.btn {width: 50%;}'),
             downloadButton('get_log', label = 'End interview'),
             
-            tags$img(height = 77, width = 133, src = 'umass_logo.png'),
-            
-            br(),
-            
-            actionLink('about_site', label = 'About this site')
-            
+            tags$img(height = 77, width = 133, src = 'umass_logo.png')
          ),
          width = 340
       ),
@@ -167,7 +160,7 @@ server <- function(input, output, session) {
    
    
    session$userData$y.range <- c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE))        # full range of DO data
-                                  
+   
    
    
    observeEvent(input$Site_Year, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
