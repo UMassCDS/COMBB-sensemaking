@@ -1,0 +1,1 @@
+Show sensor data collected at the selected monitoring site on the graph(s) and summary table.

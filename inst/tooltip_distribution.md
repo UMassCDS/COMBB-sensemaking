@@ -1,0 +1,1 @@
+Show data distribution plots to the right of the graph. A distribution plot (Sina plot) is a diagram in which the value of each data point is plotted on a single axis in such a way that the width of the plot is proportional to the number of data points with the shown corresponding value.

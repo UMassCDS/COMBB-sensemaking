@@ -1,0 +1,1 @@
+Select the statistical metric to be calculated at the above selected aggregation interval. Statistics are calculated at a discrete interval (e.g. if Hourly is chosen, the statistic is calculated for all the data points within 8-9 am, 9-10 am, and so on).

@@ -1,0 +1,1 @@
+Returns the data visualization controls to their initial default settings. Clears the graphs.

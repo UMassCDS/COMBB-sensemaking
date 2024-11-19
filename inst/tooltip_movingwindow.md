@@ -1,0 +1,1 @@
+Re-calculates the aggregated statistic using a moving window technique. A moving window function is only applied to the continuous sensor data. (e.g. if sensor data was measured every 10mins, the hourly statistic with moving window is calculated at 10 minute intervals using the data from 8:00-9:00 am, 8:10-9:10 am, 8:20-9:20 am, and so on).

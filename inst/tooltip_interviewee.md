@@ -1,0 +1,1 @@
+Enter a name or ID for the interviewee. It will be used in the log file name to coordinate log data with interviews.

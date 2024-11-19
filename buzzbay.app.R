@@ -43,7 +43,26 @@ sites <- sites[sites$include == TRUE,]
 Site_Year <- readRDS('inst/Site_Year.RDS')
 data <- readRDS('inst/data.RDS')
 
+
 about_site <- includeMarkdown('inst/about_site.md')
+
+tooltip_site <- includeMarkdown('inst/tooltip_site.md')
+tooltip_period <- includeMarkdown('inst/tooltip_period.md')
+tooltip_grab <- includeMarkdown('inst/tooltip_grab.md')
+tooltip_sensor <- includeMarkdown('inst/tooltip_sensor.md')
+tooltip_threshold <- includeMarkdown('inst/tooltip_threshold.md')
+tooltip_distribution <- includeMarkdown('inst/tooltip_distribution.md')
+tooltip_aggregation <- includeMarkdown('inst/tooltip_aggregation.md')
+tooltip_interval <- includeMarkdown('inst/tooltip_interval.md')
+tooltip_statistic <- includeMarkdown('inst/tooltip_statistic.md')
+tooltip_movingwindow <- includeMarkdown('inst/tooltip_movingwindow.md')
+tooltip_reset <- includeMarkdown('inst/tooltip_reset.md')
+tooltip_interviewee <- includeMarkdown('inst/tooltip_interviewee.md')
+tooltip_end <- includeMarkdown('inst/tooltip_end.md')
+
+
+tipped <- function(text, tooltip, delay = 300)                                            # display text with a tooltip
+   span(text, tooltip(bs_icon('info-circle'), tooltip, options = list(delay = delay)))
 
 
 
@@ -67,49 +86,45 @@ ui <- page_sidebar(
             
             br(),
             
-            selectInput('Site_Year', label = 'Site and year', choices = Site_Year$Site_Year),
+            selectInput('Site_Year', label = tipped('Site and year', tooltip_site), choices = Site_Year$Site_Year),
             
-            sliderInput('period', label = 'Time period', min = 0, max = 0, value = c(0, 0)),
+            sliderInput('period', label = tipped('Time period', tooltip_period), min = 0, max = 0, value = c(0, 0)),
             
             
-            materialSwitch('grab', label = 'Plot grab sample data', 
+            materialSwitch('grab', label = tipped('Plot grab sample data', tooltip_grab),
                            value = FALSE),
             
-            materialSwitch('sensor', label = 'Plot sensor data', 
+            materialSwitch('sensor', label = tipped('Plot sensor data', tooltip_sensor),
                            value = FALSE),
             
-            materialSwitch('plot.threshold', label = 'Plot comparison threshold', 
+            materialSwitch('plot.threshold', label = tipped('Plot comparison threshold', tooltip_threshold),
                            value = FALSE),
             
-            numericInput('threshold', label = 'Comparison threshold', value = 5,
+            numericInput('threshold', label = tipped('Comparison threshold', tooltip_threshold), value = 5,
                          min = 0, step = 1),  
             
-            materialSwitch('dist.plot', label = 'Show distribution plot', value = FALSE),
+            materialSwitch('dist.plot', label = tipped('Show distribution plot', tooltip_distribution), value = FALSE),
             
             br(),
             
-            span(HTML('<h5 style="display: inline-block;">Aggregation</h5>')),
+            tipped(HTML('<h5 style="display: inline-block;">Aggregation</h5>'), tooltip_aggregation),
             
-            selectInput('interval', label = span('Interval', 
-                                                 tooltip(bs_icon('info-circle'), 'This is a hover tooltip')), 
+            selectInput('interval', label = tipped('Interval', tooltip_interval), 
                         choices = aggreg.choices),
             
-            selectInput('method', label = span('Statistic', 
-                                               tooltip(bs_icon('info-circle'), 'This is a hover tooltip with 300 ms delay', options = list(delay = 300))), 
+            selectInput('method', label = tipped('Statistic', tooltip_statistic), 
                         choices = method.choices, selected = 'mean'),
             
-            materialSwitch('moving.window', label = span('Moving window', 
-                                                         tooltip(bs_icon('info-circle'), 'This tooltip requres clicks', options = list(trigger = 'click'))
-            )),
+            materialSwitch('moving.window', label = tipped('Moving window', tooltip_movingwindow)),
             
-            actionButton('reset', 'Reset', width = '25%'),
+            tipped(actionButton('reset', 'Reset', width = '25%'), tooltip_reset), 
             
             hr(),
             
-            textInput('intervieweeID', 'Interviewee', value = '', width = NULL, placeholder = 'Enter Interviewee name or ID'),
+            textInput('intervieweeID', tipped('Interviewee', tooltip_interviewee), value = '', width = NULL, placeholder = 'Enter Interviewee name or ID'),
             
             tags$style('.btn {width: 50%;}'),
-            downloadButton('get_log', label = 'End interview'),
+            tipped(downloadButton('get_log', label = 'End interview'), tooltip_end),
             
             tags$img(height = 77, width = 133, src = 'umass_logo.png')
          ),
@@ -261,6 +276,10 @@ server <- function(input, output, session) {
       updateSelectInput(session, 'method', selected = 'mean')
       
       updateMaterialSwitch(session, inputId = 'moving.window', value = FALSE)
+      
+      session$userData$redraw.stats <- TRUE
+      session$userData$keep.date.window <- FALSE
+      buzz.plots(input, output, session = getDefaultReactiveDomain())                                 # redraw plot to reset date slider
    })
    
    

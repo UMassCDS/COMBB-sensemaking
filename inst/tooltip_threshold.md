@@ -1,0 +1,1 @@
+Select a minimum threshold for identifying low dissolved oxygen events analysis. The default value is set to 5 mg/L.

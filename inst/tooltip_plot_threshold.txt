@@ -1,0 +1,1 @@
+Show the comparison threshold line on the graph.

@@ -1,0 +1,1 @@
+﻿Select the unit of time over which statistics will be calculated. The default value is "None," indicating the raw data is shown. The largest possible interval is "Entire Period" indicating data is to be summarized across the entire monitoring season.
