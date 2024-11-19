@@ -121,6 +121,7 @@ ui <- page_sidebar(
       navset_pill(
          nav_panel('Plot',
                    br(),
+                   br(),
                    fluidRow(
                       column(width = 10,
                              dygraphOutput('plot')

@@ -61,7 +61,7 @@
       })
       
       output$grab.table <- renderDT({                                                     # --- grab sample data table (in 3nd tab)           
-         buzz.table(session$userData$dataset[!is.na(session$userData$dataset$Grab_DO) | !is.na(session$userData$dataset$Grab_DO_Pct_Sat), ],
+         buzz.table(session$userData$dataset[!is.na(session$userData$dataset$Grab_DO), ],
                     'Grab_', 'Grab Sample Monitoring Data')
       })
       
