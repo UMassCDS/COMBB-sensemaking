@@ -159,7 +159,9 @@
    g$Source <- 2
    
    z$Date_Time <- z$Date_Time <- force_tz(z$Date_Time, 'America/New_York')          # make sure we're in EDT
-   g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
+   g$Date_Time <- g$Date_Time <- force_tz(g$Date_Time, 'America/New_York')          # make sure we're in EDT
+   
+   #g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
    
    names(g)[3] <- paste0('Grab_', names(g)[3])                    # rename grab sensor DO column
    
