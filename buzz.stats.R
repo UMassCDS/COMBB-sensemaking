@@ -1,16 +1,34 @@
-'buzz.stats' <- function(dataset, threshold, grab) {
+'buzz.stats' <- function(dataset, threshold, grab, sensor) {
    
    # Produce summary stats table for Buzzard's Bay app
    # Arguments: 
    #    dataset      sensor and grab sample data frame
    #    threshold    comparison threshold
    #    grab         if showing grab samples
+   #    sensor       if showing sensor data
    # B. Compton, 23 Aug 2024
    
    
    
-   'fmt.stats' <- function(x)                                                             # format moment stats
-      paste0(format(round(x, 1), nsmall = 1))
+   if(!grab & !sensor) 
+      return()
+   
+   'fmt.stats' <- function(x) {                                                           # format moment stats
+      suppressWarnings({
+         if(is.finite(x))
+            paste0(format(round(x, 1), nsmall = 1))
+         else
+            ''
+      })
+   }
+   
+   'fmt.pct' <- function(x) {                                                             # format % below CT
+      z <- round(sum(x, na.rm = TRUE) / sum(!is.na(x)) * 100, 0)
+      if(is.finite(z))
+         paste0(z, '%')
+      else
+         ''
+   }
    
    'fmt.hm' <- function(x) {                                                              # format minutes as h:mm
       x <- round(x, 0)
@@ -20,7 +38,7 @@
    
    Statistic <- c('Number of data points', 'Minimum', 'Maximum', 'Mean', 'Standard deviation',
                   'Number of points below CT', 
-                  'Percent below CT', 
+                  'Percent of data below CT', 
                   'Mean below CT', 
                   'Standard deviation below CT', 
                   'Longest duration below CT')
@@ -31,39 +49,41 @@
    
    
    # Calculate sensor stats
-   sense.data <- dataset[dataset$Source == 1,]
-   sense.units <- sense.data[, 'DO']                                                                                 # units to use for exceedance
-   sense.exceed <- sense.units < threshold                                                                           # cases below comparison threshold
-   
-   Sensor[1] <- format(sum(!is.na(sense.data$DO)), big.mark = ',')                                                   # sample size
-   Sensor[2] <- fmt.stats(min(sense.data$DO, na.rm = TRUE))                                                          # min
-   Sensor[3] <- fmt.stats(max(sense.data$DO, na.rm = TRUE))                                                          # max
-   Sensor[4] <- fmt.stats(mean(sense.data$DO, na.rm = TRUE))                                                         # mean
-   Sensor[5] <- fmt.stats(sd(sense.data$DO, na.rm = TRUE))                                                           # sd
-   
-   Sensor[6] <- format(sum(sense.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
-   Sensor[7] <- paste0(round(sum(sense.exceed, na.rm = TRUE) / sum(!is.na(sense.exceed)) * 100, 0), '%')             # % below CT
-   if(any(sense.exceed, na.rm = TRUE)) {                                                                             # if we're below CT,
-      Sensor[8] <- format(round(mean(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1)                       #    mean below CT
-      Sensor[9] <- ifelse(sum(sense.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
-                          format(round(sd(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1))                  
+   if(sensor) {
+      sense.data <- dataset[dataset$Source == 1,]
+      sense.units <- sense.data[, 'DO']                                                                                 # units to use for exceedance
+      sense.exceed <- sense.units < threshold                                                                           # cases below comparison threshold
       
-      if(dim(sense.data)[1] > 1) {
-         se <- sense.exceed
-         se[is.na(se)] <- FALSE                                                                                      # treat missing values as NOT below CT
+      Sensor[1] <- format(sum(!is.na(sense.data$DO)), big.mark = ',')                                                   # sample size
+      Sensor[2] <- fmt.stats(min(sense.data$DO, na.rm = TRUE))                                                          # min
+      Sensor[3] <- fmt.stats(max(sense.data$DO, na.rm = TRUE))                                                          # max
+      Sensor[4] <- fmt.stats(mean(sense.data$DO, na.rm = TRUE))                                                         # mean
+      Sensor[5] <- fmt.stats(sd(sense.data$DO, na.rm = TRUE))                                                           # sd
+      
+      Sensor[6] <- format(sum(sense.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
+      Sensor[7] <- fmt.pct(sense.exceed)                                                                                # % below CT
+      if(any(sense.exceed, na.rm = TRUE)) {                                                                             # if we're below CT,
+         Sensor[8] <- format(round(mean(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1)                       #    mean below CT
+         Sensor[9] <- ifelse(sum(sense.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
+                             format(round(sd(sense.units[sense.exceed], na.rm = TRUE), 1), nsmall = 1))                  
          
-         g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                                                           # make grouping variable of runs of TRUEs
-         for(i in length(g):2)                                                                                       # extend each group to the next sample so we get proper periods
-            if(g[i] == 0)
-               g[i] <- g[i - 1]
-         d <- cbind(aggregate(sense.data$Date_Time, by = list(g), FUN = 'max'), 
-                    aggregate(sense.data$Date_Time, by = list(g), FUN = 'min'))                                      # deltas in sec
-         d <- d[d$Group.1 != 0,]                                                                                     # drop group 0
-         m <- as.numeric(as.duration(d[, 2] - d[, 4])) / 60                                                          # duration below threshold in minutes
-         m <- m[m != 0]                                                                                              # this can happen if the last point is below the threshold
-         
-         if(length(m) > 0) {
-            Sensor[10] <- fmt.hm(max(m))                                                                            # max minutes below CT threshold
+         if(dim(sense.data)[1] > 1) {
+            se <- sense.exceed
+            se[is.na(se)] <- FALSE                                                                                      # treat missing values as NOT below CT
+            
+            g <- cumsum(se & !c(FALSE, se[-length(se)])) * se                                                           # make grouping variable of runs of TRUEs
+            for(i in length(g):2)                                                                                       # extend each group to the next sample so we get proper periods
+               if(g[i] == 0)
+                  g[i] <- g[i - 1]
+            d <- cbind(aggregate(sense.data$Date_Time, by = list(g), FUN = 'max'), 
+                       aggregate(sense.data$Date_Time, by = list(g), FUN = 'min'))                                      # deltas in sec
+            d <- d[d$Group.1 != 0,]                                                                                     # drop group 0
+            m <- as.numeric(as.duration(d[, 2] - d[, 4])) / 60                                                          # duration below threshold in minutes
+            m <- m[m != 0]                                                                                              # this can happen if the last point is below the threshold
+            
+            if(length(m) > 0) {
+               Sensor[10] <- fmt.hm(max(m))                                                                            # max minutes below CT threshold
+            }
          }
       }
    }
@@ -81,7 +101,7 @@
       Grab[5] <- fmt.stats(sd(dataset$Grab_DO, na.rm = TRUE))                                                        # sd
       
       Grab[6] <- format(sum(grab.exceed, na.rm = TRUE), big.mark = ',')                                              # n below CT
-      Grab[7] <- paste0(round(sum(grab.exceed, na.rm = TRUE) / sum(!is.na(grab.exceed)) * 100, 0), '%')              # % below CT
+      Grab[7] <- fmt.pct(grab.exceed)                                                                                # % below CT
       if(any(grab.exceed, na.rm = TRUE)) {                                                                           # if we're below CT,
          Grab[8] <- format(round(mean(grab.units[grab.exceed], na.rm = TRUE), 1), nsmall = 1)                        #    mean below CT
          Grab[9] <- ifelse(sum(grab.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
@@ -93,19 +113,32 @@
    group <- c(rep('All aggregated datapoints', 5), rep('DO events below Comparison Threshold (CT)', 5))
    
    
-   xxx <<- list(group = group, Statistic = Statistic, Unit = Unit, Sensor = Sensor)
-   stats <- data.frame(group, Statistic, Unit, Sensor)
+   # xxx <<- list(group = group, Statistic = Statistic, Unit = Unit, Sensor = Sensor, Grab = Grab)
+   # group <- xxx$group; Statistic <- xxx$Statistic; Unit <- xxx$Unit; Sensor <- xxx$Sensor; Grab <- xxx$Grab
+   
+   
+   stats <- data.frame(group, Statistic, Unit)
+   
+   if(sensor)
+      stats$Sensor <- Sensor
+   
    if(grab)
       stats$Grab <- Grab
+   
    stats <- group_by(stats, group)
+   
    
    st <- gt(stats) |>
       tab_header(title = 'Summary statistics for chosen Time Period') |>
       cols_width(group ~ px(100)) |>
       tab_options(row_group.as_column = TRUE) |>
-      cols_align('center', columns = c('group', 'Unit')) |>
-      cols_align('right', columns = c('Sensor')) |>
-      data_color(columns = 'Sensor', palette = '#BCB2FF', apply_to = 'fill')
+      cols_align('center', columns = c('group', 'Unit'))
+   
+   if(sensor) {
+      st <- cols_label(st, Sensor = 'Sensor data') |>
+         cols_align('right', columns = c('Sensor')) |>
+         data_color(columns = 'Sensor', palette = '#BCB2FF', apply_to = 'fill')
+   }
    
    if(grab) {
       st <- cols_label(st, Grab = 'Grab samples') |>

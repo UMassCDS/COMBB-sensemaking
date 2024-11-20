@@ -64,6 +64,8 @@ tooltip_end <- includeMarkdown('inst/tooltip_end.md')
 tipped <- function(text, tooltip, delay = 300)                                            # display text with a tooltip
    span(text, tooltip(bs_icon('info-circle'), tooltip, options = list(delay = delay)))
 
+#### session$userData$version <- 2
+
 
 
 # User interface ---------------------
@@ -96,6 +98,9 @@ ui <- page_sidebar(
             
             materialSwitch('sensor', label = tipped('Plot sensor data', tooltip_sensor),
                            value = FALSE),
+            
+            #### materialSwitch('sensor', label = tipped('Plot sensor data', tooltip_sensor),
+            ####                value = session$userData$version == 1),
             
             materialSwitch('plot.threshold', label = tipped('Plot comparison threshold', tooltip_threshold),
                            value = FALSE),
@@ -144,11 +149,19 @@ ui <- page_sidebar(
                       column(width = 2, 
                              plotOutput('sinaplot'))
                    ),
+                   
+#### see https://shiny.posit.co/r/articles/build/dynamic-ui/
+                   
+                   ####    br(),
+                   ####    if(session$userData$version == 1)
+                   ####       gt_output('stats')
          ),
+         
          nav_panel('Sensor table',
                    DTOutput('sensor.table')),
          nav_panel('Grab sample table',
                    DTOutput('grab.table')),
+         ####         if(session$userData$version == 2) 
          nav_panel('Summary Stats',
                    gt_output('stats'))
       )
@@ -162,6 +175,15 @@ server <- function(input, output, session) {
    
    # bs_themer()                                                     # uncomment to select a new theme
    # print(getDefaultReactiveDomain())
+   
+   
+   observe({                  # get (version) parameter from URL
+      session$userData$version <- as.numeric(parseQueryString(session$clientData$url_search)$version)[1]
+      if(is.na(session$userData$version)) session$userData$version <- 2  # default is version 2
+   })
+   
+   
+   
    
    disable('period')                                                 # this is dim while it shows 0,0
    disable('method')
@@ -216,7 +238,7 @@ server <- function(input, output, session) {
    }, ignoreInit = TRUE)
    
    
-   observeEvent(input$grab, {                                        # --- Plot grab samples    
+   observeEvent(list(input$grab, input$sensor), {                    # --- Plot grab samples or sensor data
       session$userData$keep.date.window <- TRUE
       session$userData$redraw.stats <- TRUE
       buzz.plots(input, output, session = getDefaultReactiveDomain())

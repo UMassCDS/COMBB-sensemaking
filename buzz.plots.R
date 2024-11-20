@@ -7,22 +7,43 @@
    
    
    
-   vars <- session$userData$dataset[, c('Date_Time', paste0(c('', 'Grab_')[1:(input$grab + 1)], 'DO'))]
+   dataset <<- session$userData$dataset; sensor <<- input$sensor; grab <<- input$grab
    
-   if(dim(vars)[1] > 0) {
+   vars <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(TRUE, input$grab)]), drop = FALSE]
+   
+   
+   
+   
+   #vars <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(input$sensor, input$grab)]), drop = FALSE]
+   #  print(head(vars))                                     
+   
+   if(dim(vars)[2] == 1)
+      vars[, 2] <- NA
+   
+   
+   
+   if(dim(vars)[1] > 0) 
+   {
       
       show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
       plot.data <- vars
-      names(plot.data)[2] <- 'Sensor DO'
+      
+      
+      plot.data <<- plot.data
+      
+      if(input$sensor)
+         names(plot.data)[2] <- 'Sensor DO'
       if(input$grab)
          names(plot.data)[3] <- 'Grab sample DO'
       
+      #  plot.data[, 2] <- NA
+      
       output$plot <- renderDygraph({                                                      # --- time series plot
          graph <- dygraph(plot.data, ylab = 'mg/L') |>
+            dySeries(names(plot.data)[2], color = '#3C2692') |>
             dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
             dyAxis('x', gridLineColor = '#D0D0D0') |>
             dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range) |>
-            dySeries(names(plot.data)[2], color = '#3C2692') |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             dyCrosshair(direction = "vertical")
          
@@ -69,7 +90,7 @@
       
       if(session$userData$redraw.stats)                                                   # --- summary stats table
          output$stats <- render_gt({
-            buzz.stats(session$userData$dataset, input$threshold, input$grab)
+            buzz.stats(session$userData$dataset, input$threshold, input$grab, input$sensor)
          })
    }
    
