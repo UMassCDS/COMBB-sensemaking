@@ -15,10 +15,11 @@
    
    
    
-   #  zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
+     zzz <<- list(data, Site_Year, period, interval, method, moving.window, threshold)
    #  x <- buzz.aggregate(data = zzz[[1]], Site_Year = zzz[[2]], period = zzz[[3]], interval = zzz[[4]], method = zzz[[5]], moving.window = zzz[[6]], threshold = zzz[[7]])
    #  data = zzz[[1]]; Site_Year = zzz[[2]]; period = zzz[[3]]; interval = zzz[[4]]; method = zzz[[5]]; moving.window = zzz[[6]]; threshold = zzz[[7]]
    
+     
    dataset <- data[data$Site_Year == Site_Year &                                    # get fresh dataset
                       data$Date_Time >= period[1] & data$Date_Time <= period[2], ]
    
@@ -52,13 +53,13 @@
    every <- intervals[[3]]
    
    
-   vars <- c('DO', 'Temp_CondLog', 'Grab_DO', 'Grab_Temp_CondLog')                  # all vars to aggregate
-   dataset[dataset$source == 2, vars[1:2]] <- NA                                    # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
+   vars <- c('DO', 'Grab_DO')                                                       # vars to aggregate
+   dataset[dataset$source == 2, vars[1]] <- NA                                      # nuke the imputed sensor data we added to make plots work. We don't want it contributing to aggregation; it'll be lost afterwards
    
    
    if(moving.window) {                                                              # if we're doing moving window,
-      vars.summary <- vars[3:4]                                                     #    we'll do summary aggregation for grab sample data
-      vars.mw <- vars[1:2]                                                          #    and then moving window for sensor data
+      vars.mw <- vars[1]                                                            #    we'll do moving window for sensor data
+      vars.summary <- vars[2]                                                       #    and then summary aggregation for grab sample data
    }
    else                                                                             # else,
       vars.summary <- vars                                                          #    we'll do summary aggregation for all data
@@ -75,31 +76,30 @@
       data.summary[, i] <- unlist(slide_period(dataset[, i], dataset$Date_Time, .f = ~eval(parse(text = fn)), .period = per, .every = every))
       data.summary[data.summary[, i] %in% c(-Inf, Inf), i] <- NA                    # so min and max don't cause trouble
    }
-   data.summary <- data.summary[apply(data.summary[, vars.summary], 1, function(x) any(!is.na(x))), ]    # no point in keeping a lot of empty rows 
+   data.summary <- data.summary[apply(data.summary[, vars.summary, drop = FALSE], 1, function(x) any(!is.na(x))), ]    # no point in keeping a lot of empty rows 
    
    
    # moving window aggregation for sensor data if selected
    if(moving.window) {                                                              # if moving window aggregation,
-      for(i in vars.mw)
-         switch(method,
-                mean = {
-                   dataset[, i] <- unlist(slide_index_mean(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
-                },
-                min = {
-                   dataset[, i] <- unlist(suppressWarnings(slide_index_min(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin)))
-                   dataset[dataset[, i] == Inf, i] <- NA
-                },
-                max = {
-                   dataset[, i] <- unlist(suppressWarnings(slide_index_max(dataset[, i], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin)))
-                   dataset[dataset[, i] == -Inf, i] <- NA
-                },
-                {
-                   dataset[, i] <- unlist(slide_index(dataset[, i], dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
-                })
+      switch(method,
+             mean = {
+                dataset[, vars.mw] <- unlist(slide_index_mean(dataset[, vars.mw], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin))
+             },
+             min = {
+                dataset[, vars.mw] <- unlist(suppressWarnings(slide_index_min(dataset[, vars.mw], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin)))
+                dataset[dataset[, vars.mw] == Inf, vars.mw] <- NA
+             },
+             max = {
+                dataset[, vars.mw] <- unlist(suppressWarnings(slide_index_max(dataset[, vars.mw], dataset$Date_Time, na_rm = TRUE, before = halfwin, after = halfwin)))
+                dataset[dataset[, vars.mw] == -Inf, vars.mw] <- NA
+             },
+             {
+                dataset[, vars.mw] <- unlist(slide_index(dataset[, vars.mw], dataset$Date_Time, ~eval(parse(text = fn)), .before = halfwin, .after = halfwin))
+             })
       
       
       
-      data.summary <- cbind(data.summary, DO = NA, Temp_CondLog = NA)
+      data.summary <- cbind(data.summary, DO = NA)
       dataset[vars.summary] <- NA
       dataset <- rbind(dataset, data.summary)
    }

@@ -17,7 +17,6 @@
    #        Result columns:      Site_Year         site & year (site description - year)
    #                             Date_Time         date & time of each obs (year-month-day h:m:s)
    #                             DO                DO from sensors (mg/L)
-   #                             Temp_CondLog      temperature (C)
    #                             Grab_DO           DO from grab sensors (mg/L)
    # Notes: (1) if a sensor/grab sample file matches more than one column name variant, the first one
    #            listed in col.names will be chosen. (This is what happens when your data are a mess. Grr.)
@@ -26,7 +25,6 @@
    #        (4) grab sensor data don't have negative values, so I'm not cleaning these up
    #        (5) sensor and grab sensor data are combined, with shared site/year and date/time columns. Sensor DO 
    #            values are imputed to prevent breaks in sensor data lines when plotted; will be dropped when calculating
-   #        (6) if run in the winter, we might lose DST and be off by an hour
    # B. Compton, 31 Jul 2024
    
    
@@ -36,10 +34,9 @@
    library(lubridate)
    
    
-   col.names <- list(list('Site_Year', 'Site_Year'),                            # standard col name, variants
+   col.names <- list(list('Site_Year', 'Site_Year'),              # standard col name, variants
                      list('Date_Time', c('SAMP_DATE_TIME', 'Date Time')), 
-                     list('DO', c('DO_MGL2', 'DO_mgl', 'DO_MGL')),
-                     list('Temp_CondLog', c('Temp_C_condlogger', 'TEMP_C')))
+                     list('DO', c('DO_MGL2', 'DO_mgl', 'DO_MGL')))
    
    
    'fmt.date' <- function(x) substr(format(as.POSIXct(x)), 1, 10)
@@ -50,8 +47,8 @@
    sites <- sites[sites$include == TRUE,]
    sites <- sites[order(sites$description),]
    
-   sy <- data.frame(matrix(NA, 0, 4))
-   z <- g <- matrix(NA, 0, 4)                                     # empty site and grab sensor matrices
+   sy <- data.frame(matrix(NA, 0, 3))
+   z <- g <- matrix(NA, 0, 3)                                     # empty site and grab sensor matrices
    q <- rep(NA, dim(z)[2])
    for(i in 1:length(col.names)) q[i] <- col.names[[i]][[1]]
    colnames(z) <- q
@@ -109,7 +106,7 @@
          
          x$Date_Time <- paste(unlist(lapply(x$SAMP_DATE, substr, 1, 10)), unlist(lapply(x$TIME, substr, 12, 99))) #       combine date and time
          
-         x <- x[,c('Site_Year', 'Date_Time', 'DO_MGL', 'TEMP_C')] #       pull columns in correct order
+         x <- x[,c('Site_Year', 'Date_Time', 'DO_MGL')]            #       pull columns in correct order
          names(x) <- unlist(lapply(col.names, `[[`, 1))           #       and apply standard names
          
          suppressWarnings(x$DO <- as.numeric(x$DO))               #       these come in as character
@@ -129,14 +126,16 @@
    saveRDS(sy, 'inst/Site_Year.RDS')
    
    
-   date.range <- c(max(aggregate(Date_Time ~ Site_Year, data = z, FUN = min)$Date_Time),           # trim sensor and grab data to common sensor date range 
-                   min(aggregate(Date_Time ~ Site_Year, data = z, FUN = max)$Date_Time))
-   cat('Trimming entire dataset to common sensor date range ', fmt.date(date.range[1]), ' - ' , fmt.date(date.range[2]), '\n', sep = '')
-   z <- z[z$Date_Time >= date.range[1] & z$Date_Time <= date.range[2], ]
-   g <- g[g$Date_Time >= date.range[1] & g$Date_Time <= date.range[2], ]
+   # date.range <- c(max(aggregate(Date_Time ~ Site_Year, data = z, FUN = min)$Date_Time),           # trim sensor and grab data to common sensor date range 
+   #                 min(aggregate(Date_Time ~ Site_Year, data = z, FUN = max)$Date_Time))
+   # cat('Trimming entire dataset to common sensor date range ', fmt.date(date.range[1]), ' - ' , fmt.date(date.range[2]), '\n', sep = '')
+   # z <- z[z$Date_Time >= date.range[1] & z$Date_Time <= date.range[2], ]
+   # g <- g[g$Date_Time >= date.range[1] & g$Date_Time <= date.range[2], ]
+   # cat(dim(z)[1], ' rows left in sensor data, ', dim(g)[1], ' rows left in grab sample data.\n', sep = '')
+
    
    
-   # Combine sensor and grab sensor data into a single data frame, with Site_Year, Date_Time, DO, Temp_CondLog, Grab_DO, and Source
+   # Combine sensor and grab sensor data into a single data frame, with Site_Year, Date_Time, DO, Grab_DO, and Source
    # Source is 1 for sensors, and 2 for grab sensors
    
    z$Source <- 1
@@ -145,7 +144,7 @@
    z$Date_Time <- z$Date_Time <- force_tz(z$Date_Time, 'America/New_York')          # make sure we're in EDT
    g$Date_Time <- as.POSIXct(g$Date_Time, tz = 'America/New_York')
    
-   names(g)[c(3:4)] <- paste0('Grab_', names(g)[c(3:4)])          # rename grab sensor DO and temp columns
+   names(g)[3] <- paste0('Grab_', names(g)[3])                    # rename grab sensor DO column
    
    z <- bind_rows(z, g)                                           # combine the two datasets
    z$Site_Year <- as.factor(z$Site_Year)                          # Site_Year as factor, of course
