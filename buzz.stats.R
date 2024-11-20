@@ -18,17 +18,15 @@
    }
    
    
-   Statistic <- c('Number of points', 'Minimum', 'Maximum', 'Mean', 'Standard deviation',
+   Statistic <- c('Number of data points', 'Minimum', 'Maximum', 'Mean', 'Standard deviation',
                   'Number of points below CT', 
                   'Percent below CT', 
                   'Mean below CT', 
                   'Standard deviation below CT', 
-                  'Shortest duration below CT', 
-                  'Longest duration below CT', 
-                  'Mean time below CT')
+                  'Longest duration below CT')
    
-   Unit <- c('count', rep('mg/L', 4), 'count', '%', rep('mg/L', 2), rep('hours:mins', 3))
-   Sensor <- Grab <- rep('', 12)
+   Unit <- c('count', rep('mg/L', 4), 'count', '%', rep('mg/L', 2), 'hours:mins')
+   Sensor <- Grab <- rep('', 10)
    
    
    
@@ -65,9 +63,7 @@
          m <- m[m != 0]                                                                                              # this can happen if the last point is below the threshold
          
          if(length(m) > 0) {
-            Sensor[10] <- fmt.hm(min(m))                                                                             # min, max, and mean minutes below CT threshold
-            Sensor[11] <- fmt.hm(max(m))
-            Sensor[12] <- fmt.hm(mean(m))
+            Sensor[10] <- fmt.hm(max(m))                                                                            # max minutes below CT threshold
          }
       }
    }
@@ -91,11 +87,13 @@
          Grab[9] <- ifelse(sum(grab.exceed, na.rm = TRUE) == 1, '',                                                  #    standard deviation below CT (only if n > 1)
                            format(round(sd(grab.units[grab.exceed], na.rm = TRUE), 1), nsmall = 1))                  
       }
-      Grab[10:12] <- 'N/A'                                                                                           # no durations below CT for grab-bag
+      Grab[10] <- ''                                                                                                 # no durations below CT for grab-bag
    }
    
-   group <- c(rep('All aggregated datapoints', 5), rep('DO events below Comparison Threshold (CT)', 7))
+   group <- c(rep('All aggregated datapoints', 5), rep('DO events below Comparison Threshold (CT)', 5))
    
+   
+   xxx <<- list(group = group, Statistic = Statistic, Unit = Unit, Sensor = Sensor)
    stats <- data.frame(group, Statistic, Unit, Sensor)
    if(grab)
       stats$Grab <- Grab
