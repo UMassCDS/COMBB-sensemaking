@@ -64,7 +64,10 @@ tooltip_end <- includeMarkdown('inst/tooltip_end.md')
 tipped <- function(text, tooltip, delay = 300)                                            # display text with a tooltip
    span(text, tooltip(bs_icon('info-circle'), tooltip, options = list(delay = delay)))
 
-#### session$userData$version <- 2
+
+# version <- 1                               #  version <- 1 forces stats to front tab and opens with sensor data on (umassdsl version)
+version <- 2                               #  version <- 2 moves stats to fourth tab and opens with sensor data off (combb version)
+
 
 
 
@@ -96,11 +99,8 @@ ui <- page_sidebar(
             materialSwitch('grab', label = tipped('Plot grab sample data', tooltip_grab),
                            value = FALSE),
             
-            materialSwitch('sensor', label = tipped('Plot sensor data', tooltip_sensor),
-                           value = FALSE),
-            
-            #### materialSwitch('sensor', label = tipped('Plot sensor data', tooltip_sensor),
-            ####                value = session$userData$version == 1),
+            materialSwitch('sensor', label = tipped('Plot sensor data', tooltip_sensor),                 # if version 1, start with sensor ON
+                           value = version == 1),
             
             materialSwitch('plot.threshold', label = tipped('Plot comparison threshold', tooltip_threshold),
                            value = FALSE),
@@ -150,20 +150,18 @@ ui <- page_sidebar(
                              plotOutput('sinaplot'))
                    ),
                    
-#### see https://shiny.posit.co/r/articles/build/dynamic-ui/
-                   
-                   ####    br(),
-                   ####    if(session$userData$version == 1)
-                   ####       gt_output('stats')
+                   br(),
+                   if(version == 1)                                  # if version 1, display stats on first tab
+                      gt_output('stats')
          ),
          
          nav_panel('Sensor table',
                    DTOutput('sensor.table')),
          nav_panel('Grab sample table',
                    DTOutput('grab.table')),
-         ####         if(session$userData$version == 2) 
-         nav_panel('Summary Stats',
-                   gt_output('stats'))
+         if(version == 2)                                            # if version 2, display stats on fourth tab
+            nav_panel('Summary Stats',
+                      gt_output('stats'))
       )
    )
 )
@@ -175,14 +173,6 @@ server <- function(input, output, session) {
    
    # bs_themer()                                                     # uncomment to select a new theme
    # print(getDefaultReactiveDomain())
-   
-   
-   observe({                  # get (version) parameter from URL
-      session$userData$version <- as.numeric(parseQueryString(session$clientData$url_search)$version)[1]
-      if(is.na(session$userData$version)) session$userData$version <- 2  # default is version 2
-   })
-   
-   
    
    
    disable('period')                                                 # this is dim while it shows 0,0
