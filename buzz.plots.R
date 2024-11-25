@@ -23,6 +23,17 @@
    }
    
    
+   if(input$sensor & input$grab & !input$moving.window) {                              # Ugh! If grab sample is taken at the same time as sensor data, I get two rows
+      b <- rep(TRUE, dim(vars)[1])                                                     # with diagonal NAs, and identify doesn't work. Fix that here.
+      for(i in 1:(dim(vars)[1] - 1))
+         if(vars$Date_Time[i] == vars$Date_Time[i + 1]) {
+            vars$Grab_DO[i] <- max(vars$Grab_DO[c(i, i + 1)], na.rm = TRUE)
+            b[i + 1] <- FALSE
+         }
+      vars <- vars[b, ]
+   }
+   
+   
    if(dim(vars)[1] > 0) 
    {
       show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
@@ -36,7 +47,6 @@
             dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
             dyAxis('x', gridLineColor = '#D0D0D0', valueRange = session$userData$x.range, rangePad = 5) |>
             dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range) |>
-            dyLegend(width = 500) |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             dyCrosshair(direction = "vertical") 
          
