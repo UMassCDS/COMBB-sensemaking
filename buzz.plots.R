@@ -7,51 +7,50 @@
    
    
    
-   dataset <<- session$userData$dataset; sensor <<- input$sensor; grab <<- input$grab
+   ### dataset <<- session$userData$dataset; sensor <<- input$sensor; grab <<- input$grab
    
-   vars <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(TRUE, input$grab)]), drop = FALSE]
+   vars <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(input$sensor, input$grab)]), drop = FALSE]
+   
+   if(input$grab & !input$sensor)                                                      # if only grab samples, drop all missing sensor rows to make identify easier
+      vars <- vars[!is.na(vars$Grab_DO), ]
    
    
-   
-   
-   #vars <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(input$sensor, input$grab)]), drop = FALSE]
-   #  print(head(vars))                                     
-   
-   if(dim(vars)[2] == 1)
-      vars[, 2] <- NA
-   
+   if(input$interval == 'Entire period' & (input$sensor | input$grab)) {               # if interval is entire period, go to a lot of trouble 
+      vars <- rbind(vars[c(1, 1), ], vars)                                             #    add 2 new leading rows for ends of sensor data
+      vars$Date_Time[c(1, 2)] <- x.range
+      if(input$grab)
+         vars$Grab_DO[c(1, 2)] <- NA
+   }
    
    
    if(dim(vars)[1] > 0) 
    {
-      
       show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
       plot.data <- vars
       
-      
-      plot.data <<- plot.data
-      
-      if(input$sensor)
-         names(plot.data)[2] <- 'Sensor DO'
-      if(input$grab)
-         names(plot.data)[3] <- 'Grab sample DO'
-      
-      #  plot.data[, 2] <- NA
+      if(!input$sensor & !input$grab)                                                     # if no data selected
+         plot.data$null <- NA                                                                #    this blank column forces x-axis to display properly 
       
       output$plot <- renderDygraph({                                                      # --- time series plot
          graph <- dygraph(plot.data, ylab = 'mg/L') |>
-            dySeries(names(plot.data)[2], color = '#3C2692') |>
             dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
-            dyAxis('x', gridLineColor = '#D0D0D0') |>
+            dyAxis('x', gridLineColor = '#D0D0D0', valueRange = session$userData$x.range, rangePad = 5) |>
             dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range) |>
+            dyLegend(width = 500) |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
-            dyCrosshair(direction = "vertical")
+            dyCrosshair(direction = "vertical") 
+         
+         if(input$sensor)
+            graph <- dySeries(graph, 'DO', color = '#3C2692', label = 'Sensor DO')
+         
+         if(input$grab)
+            graph <- dySeries(graph, 'Grab_DO', drawPoints = TRUE, pointSize = 3, color = '#DB5920', strokeWidth = 0, label = 'Grab Sample DO')
+         
+         if(input$sensor | input$grab)
+            graph <- dyLegend(graph, show = 'always')
          
          if(show.threshold)
             graph <- dyLimit(graph, input$threshold, color = 'green')
-         
-         if(input$grab)
-            graph <- dySeries(graph, names(plot.data)[3], drawPoints = TRUE, pointSize = 3, color = '#DB5920', strokeWidth = 0)  
          
          graph
       })
@@ -68,7 +67,8 @@
             if(input$dist.plot & length(x[[1]]) >= 2) {
                par(mai = c(0.75, 0, 0.25, 0))                                             # margins: bottom, left, top, right (inches). Calibrated to dygraph.
                sinaplot(x, xlab = '', pch = 20, cex = 1, seed = 1, ylim = session$userData$y.range,
-                        xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920'), main = 'Distribution plot', cex.main = 1)
+                        xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920')[c(input$sensor, input$grab)],
+                        main = 'Distribution plot', cex.main = 1)
             }
             else
                NULL

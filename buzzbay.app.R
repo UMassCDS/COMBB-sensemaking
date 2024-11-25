@@ -186,9 +186,8 @@ server <- function(input, output, session) {
    })
    
    
-   
-   session$userData$y.range <- c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO), na.rm = TRUE))        # full range of DO data
-   
+   session$userData$x.range <- c(min(data$Date_Time, na.rm = TRUE), max(data$Date_Time, na.rm = TRUE))                           # fix full date range
+   session$userData$y.range <- c(min(c(data$DO, data$Grab_DO), na.rm = TRUE), max(c(data$DO, data$Grab_DO) * 1.15, na.rm = TRUE)) # fix full range of DO data (pad 15% at top)
    
    
    observeEvent(input$Site_Year, {                                    # --- New site/year selected. Select site and year (entire period) and update time period slider
