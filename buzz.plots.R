@@ -17,7 +17,7 @@
    
    if(input$interval == 'Entire period' & (input$sensor | input$grab)) {               # if interval is entire period, go to a lot of trouble 
       vars <- rbind(vars[c(1, 1), ], vars)                                             #    add 2 new leading rows for ends of sensor data
-      vars$Date_Time[c(1, 2)] <- x.range
+      vars$Date_Time[c(1, 2)] <- session$userData$x.range
       if(input$grab)
          vars$Grab_DO[c(1, 2)] <- NA
    }
