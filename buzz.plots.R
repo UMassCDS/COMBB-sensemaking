@@ -39,11 +39,11 @@
       }
       
       
-      if(!x.range[1] %in% plot.data$Date_Time)
-         plot.data <- rbind(c(x.range[1], rep(NA, dim(plot.data)[2] - 1)), plot.data)     # force x-axis to conform to x.range when showing only grab samples (boo dygraphs!)
+      if(!session$userData$x.range[1] %in% plot.data$Date_Time)
+         plot.data <- rbind(c(session$userData$x.range[1], rep(NA, dim(plot.data)[2] - 1)), plot.data)     # force x-axis to conform to x.range when showing only grab samples (boo dygraphs!)
       
-      if(!x.range[2] %in% plot.data$Date_Time)
-         plot.data <- rbind(plot.data, c(x.range[2], rep(NA, dim(plot.data)[2] - 1)))
+      if(!session$userData$x.range[2] %in% plot.data$Date_Time)
+         plot.data <- rbind(plot.data, c(session$userData$x.range[2], rep(NA, dim(plot.data)[2] - 1)))
       
       
       show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance

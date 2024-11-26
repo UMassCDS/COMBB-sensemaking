@@ -8,13 +8,13 @@ information about how individuals make sense and interpret data that has been co
 The tool is publicly available and can be used by anyone to examine the datasets included. 
 
 
-The **left pane** controls the data displayed in the right pane. 
+#### The **left pane** controls the data displayed in the right pane
 
 - *Site and year* controls which site and year's data will be displayed and summarized.
 - *Time period* restricts the graph and statistics to the selected time period within the current site and year.
-- *Plot grab sample data* includes grab samples (always in orange) in the time series, distribution plots, and summary
+- *Plot grab sample data* includes grab samples (always in **orange**) in the time series, distribution plots, and summary
 statistics. The grab samples are collected manually in the field and thus tend to be infrequent.  
-- *Plot sensor data* includes sensor data (always in purple) in th etime series, distribution plots, and summary statistics.
+- *Plot sensor data* includes sensor data (always in **purple**) in th etime series, distribution plots, and summary statistics.
 - *Comparison threshold* sets a level of DO, in the current units, that the user considers important, typically because they are 
 concerned when DO drops below that level. It is used in the statistical summary, and may be displayed on the time series graph 
 with *Plot comparison threshold*. 
@@ -34,10 +34,10 @@ that show how observations are distributed across the range of dissolved oxygen 
    the associated date and time.  
 
 
-The **right pane** displays the following:
+#### The **right pane** displays data
 
 ##### Plot tab
-- *Time series plot* displays dissolved oxygen from sensor data in **purple** and (optionally) the grab sample data in **orange** for 
+- *Time series plot* displays dissolved oxygen from sensor data in **purple** and the grab sample data in **orange** for 
 the selected *site and year* and *time period*. You can zoom in to a subset of dates in this plot by dragging 
 the mouse across the plot or moving the handles below the plot. Double-click to reset the zoom. This zooming only affects
 the time series plot. The time series shows the *comparison threshold* if selected.
