@@ -160,7 +160,7 @@ ui <- page_sidebar(
          nav_panel('Grab sample table',
                    DTOutput('grab.table')),
          if(version == 2)                                            # if version 2, display stats on fourth tab
-            nav_panel('Summary Stats',
+            nav_panel('Summary stats',
                       gt_output('stats'))
       )
    )

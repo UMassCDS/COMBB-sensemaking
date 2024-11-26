@@ -9,43 +9,52 @@
    
    ### dataset <<- session$userData$dataset; sensor <<- input$sensor; grab <<- input$grab
    
-   vars <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(input$sensor, input$grab)]), drop = FALSE]
-   
-   if(input$grab & !input$sensor)                                                      # if only grab samples, drop all missing sensor rows to make identify easier
-      vars <- vars[!is.na(vars$Grab_DO), ]
+   plot.data <- session$userData$dataset[, c('Date_Time', c('DO', 'Grab_DO')[c(input$sensor, input$grab)]), drop = FALSE]    # plot.data is used throughout
    
    
-   if(input$interval == 'Entire period' & (input$sensor | input$grab)) {               # if interval is entire period, go to a lot of trouble 
-      vars <- rbind(vars[c(1, 1), ], vars)                                             #    add 2 new leading rows for ends of sensor data
-      vars$Date_Time[c(1, 2)] <- session$userData$x.range
-      if(input$grab)
-         vars$Grab_DO[c(1, 2)] <- NA
-   }
-   
-   
-   if(input$sensor & input$grab & !input$moving.window) {                              # Ugh! If grab sample is taken at the same time as sensor data, I get two rows
-      b <- rep(TRUE, dim(vars)[1])                                                     # with diagonal NAs, and identify doesn't work. Fix that here.
-      for(i in 1:(dim(vars)[1] - 1))
-         if(vars$Date_Time[i] == vars$Date_Time[i + 1]) {
-            vars$Grab_DO[i] <- max(vars$Grab_DO[c(i, i + 1)], na.rm = TRUE)
-            b[i + 1] <- FALSE
-         }
-      vars <- vars[b, ]
-   }
-   
-   
-   if(dim(vars)[1] > 0) 
+   if(dim(plot.data)[1] > 0)                                                              # don't do anything if no data
    {
+      plot.data <- plot.data                                                              # plot.data is just for time series
+      
+      if(input$grab & !input$sensor)                                                      # if only grab samples, drop all missing sensor rows to make identify easier
+         plot.data <- plot.data[!is.na(plot.data$Grab_DO), ]
+      
+      
+      if(input$interval == 'Entire period' & (input$sensor | input$grab)) {               # if interval is entire period, go to a lot of trouble 
+         plot.data <- rbind(plot.data[c(1, 1), ], plot.data)                              #    add 2 new leading rows for ends of sensor data
+         plot.data$Date_Time[c(1, 2)] <- session$userData$x.range
+         if(input$grab)
+            plot.data$Grab_DO[c(1, 2)] <- NA
+      }
+      
+      
+      if(input$sensor & input$grab & !input$moving.window) {                              # Ugh! If grab sample is taken at the same time as sensor data, I get two rows
+         b <- rep(TRUE, dim(plot.data)[1])                                                # with diagonal NAs, and identify doesn't work. Fix that here.
+         for(i in 1:(dim(plot.data)[1] - 1))
+            if(plot.data$Date_Time[i] == plot.data$Date_Time[i + 1]) {
+               plot.data$Grab_DO[i] <- max(plot.data$Grab_DO[c(i, i + 1)], na.rm = TRUE)
+               b[i + 1] <- FALSE
+            }
+         plot.data <- plot.data[b, ]
+      }
+      
+      
+      if(!x.range[1] %in% plot.data$Date_Time)
+         plot.data <- rbind(c(x.range[1], rep(NA, dim(plot.data)[2] - 1)), plot.data)     # force x-axis to conform to x.range when showing only grab samples (boo dygraphs!)
+      
+      if(!x.range[2] %in% plot.data$Date_Time)
+         plot.data <- rbind(plot.data, c(x.range[2], rep(NA, dim(plot.data)[2] - 1)))
+      
+      
       show.threshold <- input$plot.threshold & (input$interval == 'None' | (!input$method %in% c('sd', 'pe')))   # plot threshold if on and not aggregating by SD or % exceedance
-      plot.data <- vars
       
       if(!input$sensor & !input$grab)                                                     # if no data selected
-         plot.data$null <- NA                                                                #    this blank column forces x-axis to display properly 
+         plot.data$null <- NA                                                             #    this blank column forces x-axis to display properly 
       
       output$plot <- renderDygraph({                                                      # --- time series plot
          graph <- dygraph(plot.data, ylab = 'mg/L') |>
             dyOptions(useDataTimezone = TRUE, connectSeparatedPoints = input$interval != 'None') |>
-            dyAxis('x', gridLineColor = '#D0D0D0', valueRange = session$userData$x.range, rangePad = 5) |>
+            dyAxis('x', gridLineColor = '#D0D0D0', rangePad = 5) |>
             dyAxis('y', gridLineColor = '#D0D0D0', valueRange = session$userData$y.range) |>
             dyRangeSelector(retainDateWindow = session$userData$keep.date.window) |>
             dyCrosshair(direction = "vertical") 
@@ -67,14 +76,15 @@
       
       
       
-      if(input$dist.plot) {                                                               # --- distribution plot, if selected and > 2 points
-         x <- list(vars[session$userData$dataset$Source == 1, 2], vars[, c(-1, -2)])      # response variables (sensors and maybe grab samples) as list; drop imputed sensor data
+      if(input$dist.plot) {                                                               # --- distribution plot
+         x <- list(plot.data[session$userData$dataset$Source == 1, 2], plot.data[, c(-1, -2)])      # response variables (sensors and maybe grab samples) as list; drop imputed sensor data
          x <- lapply(x, function(v) v[!is.na(v)])                                         # remove missing
          if(length(x[[2]]) < 2)                                                           # if only 1 grab samples point, drop it as we can't plot
             x <- x[1]
          
+         
          output$sinaplot <- renderPlot(
-            if(input$dist.plot & length(x[[1]]) >= 2) {
+            if(input$dist.plot & length(x[[1]]) >= 2 & !input$interval == 'Entire period') {
                par(mai = c(0.75, 0, 0.25, 0))                                             # margins: bottom, left, top, right (inches). Calibrated to dygraph.
                sinaplot(x, xlab = '', pch = 20, cex = 1, seed = 1, ylim = session$userData$y.range,
                         xaxt = 'n', yaxt = 'n', lty = 0, col = c('#3C2692', '#DB5920')[c(input$sensor, input$grab)],
