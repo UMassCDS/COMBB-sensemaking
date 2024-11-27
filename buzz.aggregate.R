@@ -99,7 +99,7 @@
       
       
       
-      data.summary <- cbind(data.summary, DO = NA)
+      data.summary$DO <- rep(NA, dim(data.summary)[1])                              # add DO with NA, but don't crash when no rows
       dataset[vars.summary] <- NA
       dataset <- rbind(dataset, data.summary)
    }
