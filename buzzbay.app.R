@@ -1,5 +1,5 @@
-# buzzbay - Buzzards Bay data display tool
-# B. Compton, 31 Jul 2024
+# buzzbay - Buzzards Bay sensemaking tool
+# B. Compton, 31 Jul 2024 - 27 Nov 2024
 
 
 
