@@ -18,7 +18,7 @@ as part of the
 
 ## Running this app on your own computer
 
- 1.   Go to https://github.com/bwcompton/buzzbay
+ 1.   Go to https://github.com/UMassCDS/COMBB-sensemaking.git
  1.   Click on the big green Code button and select Download ZIP
  1.   Unzip the resulting file somewhere on your computer
  1.   Fire up RStudio
